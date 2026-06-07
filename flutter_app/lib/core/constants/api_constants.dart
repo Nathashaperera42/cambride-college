@@ -4,7 +4,7 @@ class ApiConstants {
   //   iOS simulator / desktop -> http://localhost:5000
   //   Flutter web             -> http://localhost:5000
   //   Real device             -> http://<your-computer-LAN-IP>:5000
-  static const String baseUrl = 'http://localhost:5000/api';
+  static const String baseUrl = 'https://cambridge-backend-b71x.onrender.com';
 
   // Auth
   static const String register = '/auth/register';
