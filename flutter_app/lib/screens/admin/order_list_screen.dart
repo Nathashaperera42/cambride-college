@@ -129,33 +129,73 @@ class _OrderRow extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: _kBorderColor)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(order.orderNumber, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: _kTitleColor)),
+        child: LayoutBuilder(
+          builder: (_, constraints) {
+            final narrow = constraints.maxWidth < 380;
+            final orderInfo = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(order.orderNumber,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: _kTitleColor)),
                 const SizedBox(height: 2),
                 Text(
                   order.createdAt != null
                       ? '${order.createdAt!.day}/${order.createdAt!.month}/${order.createdAt!.year}'
                       : '',
-                  style: const TextStyle(fontSize: 12, color: _kMutedColor),
+                  style:
+                      const TextStyle(fontSize: 12, color: _kMutedColor),
                 ),
-              ]),
-            ),
-            Text('Rs. ${order.total.toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: _kPrimary)),
-            const SizedBox(width: 12),
-            _StatusDropdown(current: order.status, statuses: statuses, onChanged: onStatusChange),
-          ]),
-          const SizedBox(height: 10),
-          if (order.billingInfo != null)
-            Text('${order.billingInfo!.fullName} · ${order.billingInfo!.email}',
-                style: const TextStyle(fontSize: 13, color: _kMutedColor)),
-          const SizedBox(height: 6),
-          Text('${order.items.length} course(s): ${order.items.map((i) => i.title).join(', ')}',
-              style: const TextStyle(fontSize: 12, color: _kMutedColor), maxLines: 1, overflow: TextOverflow.ellipsis),
-        ]),
+              ],
+            );
+
+            final priceAndStatus = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Rs. ${order.total.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: _kPrimary)),
+                const SizedBox(width: 12),
+                _StatusDropdown(
+                    current: order.status,
+                    statuses: statuses,
+                    onChanged: onStatusChange),
+              ],
+            );
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (narrow) ...[
+                  orderInfo,
+                  const SizedBox(height: 8),
+                  priceAndStatus,
+                ] else
+                  Row(children: [
+                    Expanded(child: orderInfo),
+                    priceAndStatus,
+                  ]),
+                const SizedBox(height: 10),
+                if (order.billingInfo != null)
+                  Text(
+                      '${order.billingInfo!.fullName} · ${order.billingInfo!.email}',
+                      style: const TextStyle(
+                          fontSize: 13, color: _kMutedColor)),
+                const SizedBox(height: 6),
+                Text(
+                    '${order.items.length} course(s): ${order.items.map((i) => i.title).join(', ')}',
+                    style: const TextStyle(
+                        fontSize: 12, color: _kMutedColor),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

@@ -64,177 +64,319 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     return AdminShell(
       activeRoute: Routes.userList,
       breadcrumbs: const ['Admin', 'Clients'],
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Toolbar
-            Row(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+
+          final searchField = SizedBox(
+            height: 40,
+            child: TextField(
+              controller: _search,
+              decoration: InputDecoration(
+                hintText: 'Search in table',
+                hintStyle: const TextStyle(fontSize: 13, color: _kMuted),
+                prefixIcon: const Icon(Icons.search, size: 18, color: _kMuted),
+                contentPadding: EdgeInsets.zero,
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: _kBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: _kBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                      color: _kPrimary.withValues(alpha: 0.6), width: 1.5),
+                ),
+              ),
+              onSubmitted: notifier.setSearch,
+            ),
+          );
+
+          final filterBtn = SizedBox(
+            height: 40,
+            child: OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.filter_list, size: 16),
+              label: const Text('Filters'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _kBodyText,
+                side: const BorderSide(color: _kBorder),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+              ),
+            ),
+          );
+
+          final addBtn = SizedBox(
+            height: 40,
+            child: FilledButton.icon(
+              onPressed: () => context.push(Routes.addUser),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add a client'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _kPrimary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+            ),
+          );
+
+          return Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Toolbar — stacks vertically on mobile
+                if (isMobile) ...[
+                  searchField,
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    filterBtn,
+                    const SizedBox(width: 8),
+                    addBtn,
+                  ]),
+                ] else
+                  Row(children: [
+                    Expanded(child: searchField),
+                    const SizedBox(width: 12),
+                    filterBtn,
+                    const SizedBox(width: 12),
+                    addBtn,
+                  ]),
+                if (state.error != null) ...[
+                  const SizedBox(height: 10),
+                  Text(state.error!,
+                      style:
+                          const TextStyle(color: Colors.red, fontSize: 13)),
+                ],
+                const SizedBox(height: 20),
+                // Table (desktop) or cards (mobile)
                 Expanded(
-                  child: SizedBox(
-                    height: 40,
-                    child: TextField(
-                      controller: _search,
-                      decoration: InputDecoration(
-                        hintText: 'Search in table',
-                        hintStyle:
-                            const TextStyle(fontSize: 13, color: _kMuted),
-                        prefixIcon:
-                            const Icon(Icons.search, size: 18, color: _kMuted),
-                        contentPadding: EdgeInsets.zero,
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: _kBorder),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: _kBorder),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                              color: _kPrimary.withValues(alpha: 0.6),
-                              width: 1.5),
-                        ),
-                      ),
-                      onSubmitted: notifier.setSearch,
-                    ),
-                  ),
+                  child: isMobile
+                      ? _buildCardList(state, context)
+                      : _buildTable(state, context),
                 ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  height: 40,
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.filter_list, size: 16),
-                    label: const Text('Filters'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _kBodyText,
-                      side: const BorderSide(color: _kBorder),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  height: 40,
-                  child: FilledButton.icon(
-                    onPressed: () => context.push(Routes.addUser),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add a client'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _kPrimary,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                  ),
+                // Pagination bar
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: isMobile
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${state.total} client${state.total == 1 ? '' : 's'} total',
+                              style: const TextStyle(
+                                  fontSize: 13, color: _kMuted),
+                            ),
+                            const SizedBox(height: 8),
+                            _Pagination(state: state, notifier: notifier),
+                          ],
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${state.total} client${state.total == 1 ? '' : 's'} total',
+                              style: const TextStyle(
+                                  fontSize: 13, color: _kMuted),
+                            ),
+                            _Pagination(state: state, notifier: notifier),
+                          ],
+                        ),
                 ),
               ],
             ),
-            if (state.error != null) ...[
-              const SizedBox(height: 10),
-              Text(state.error!,
-                  style: const TextStyle(color: Colors.red, fontSize: 13)),
-            ],
-            const SizedBox(height: 20),
-            // Table card
-            Expanded(
-              child: Card(
-                elevation: 0,
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: const BorderSide(color: _kBorder),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    // Table header row
-                    Container(
-                      height: 46,
-                      color: _kTableHeaderBg,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: const Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: _HeaderCell('Name'),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: _HeaderCell('Email'),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: _HeaderCell('Role'),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: _HeaderCell('Joined'),
-                          ),
-                          SizedBox(
-                            width: 88,
-                            child: _HeaderCell('Actions'),
-                          ),
-                        ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCardList(UserListState state, BuildContext context) {
+    if (state.loading) {
+      return const Center(child: CircularProgressIndicator(color: _kPrimary));
+    }
+    if (state.users.isEmpty) {
+      return const Center(
+          child: Text('No clients found', style: TextStyle(color: _kMuted)));
+    }
+    return ListView.separated(
+      itemCount: state.users.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (_, i) => _ClientCard(
+        user: state.users[i],
+        onEdit: () =>
+            context.push(Routes.editUser, extra: state.users[i]),
+        onDelete: () => _confirmDelete(state.users[i]),
+      ),
+    );
+  }
+
+  Widget _buildTable(UserListState state, BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: _kBorder),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Container(
+            height: 46,
+            color: _kTableHeaderBg,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: const Row(
+              children: [
+                Expanded(flex: 3, child: _HeaderCell('Name')),
+                Expanded(flex: 3, child: _HeaderCell('Email')),
+                Expanded(flex: 2, child: _HeaderCell('Role')),
+                Expanded(flex: 2, child: _HeaderCell('Joined')),
+                SizedBox(width: 88, child: _HeaderCell('Actions')),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: _kBorder),
+          Expanded(
+            child: state.loading
+                ? const Center(
+                    child: CircularProgressIndicator(color: _kPrimary))
+                : state.users.isEmpty
+                    ? const Center(
+                        child: Text('No clients found',
+                            style: TextStyle(color: _kMuted)))
+                    : ListView.separated(
+                        itemCount: state.users.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: _kBorder),
+                        itemBuilder: (_, i) => _ClientRow(
+                          user: state.users[i],
+                          onEdit: () => context.push(Routes.editUser,
+                              extra: state.users[i]),
+                          onDelete: () => _confirmDelete(state.users[i]),
+                        ),
                       ),
-                    ),
-                    const Divider(height: 1, color: _kBorder),
-                    // Table body
-                    Expanded(
-                      child: state.loading
-                          ? const Center(
-                              child: CircularProgressIndicator(
-                                color: _kPrimary,
-                              ),
-                            )
-                          : state.users.isEmpty
-                              ? const Center(
-                                  child: Text(
-                                    'No clients found',
-                                    style: TextStyle(color: _kMuted),
-                                  ),
-                                )
-                              : ListView.separated(
-                                  itemCount: state.users.length,
-                                  separatorBuilder: (_, __) => const Divider(
-                                    height: 1,
-                                    color: _kBorder,
-                                  ),
-                                  itemBuilder: (_, i) => _ClientRow(
-                                    user: state.users[i],
-                                    onEdit: () => context.push(
-                                        Routes.editUser,
-                                        extra: state.users[i]),
-                                    onDelete: () =>
-                                        _confirmDelete(state.users[i]),
-                                  ),
-                                ),
-                    ),
-                  ],
-                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Mobile card ──────────────────────────────────────────────────────────────
+
+class _ClientCard extends StatelessWidget {
+  final UserModel user;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _ClientCard(
+      {required this.user, required this.onEdit, required this.onDelete});
+
+  String get _joinedDate {
+    if (user.createdAt == null) return '—';
+    final d = user.createdAt!;
+    return '${d.day}/${d.month}/${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isAdmin = user.role == 'admin';
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: _kBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: _kPrimary.withValues(alpha: 0.14),
+              child: Text(
+                user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _kPrimary),
               ),
             ),
-            // Pagination bar
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${state.total} client${state.total == 1 ? '' : 's'} total',
-                    style: const TextStyle(fontSize: 13, color: _kMuted),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          user.name,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _kTitleColor),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isAdmin
+                              ? _kPrimary.withValues(alpha: 0.12)
+                              : _kGreen.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          isAdmin ? 'Admin' : 'Client',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isAdmin ? _kPrimary : _kGreenText,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  _Pagination(state: state, notifier: notifier),
+                  const SizedBox(height: 3),
+                  Text(user.email,
+                      style:
+                          const TextStyle(fontSize: 12, color: _kBodyText),
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 1),
+                  Text('Joined $_joinedDate',
+                      style:
+                          const TextStyle(fontSize: 11, color: _kMuted)),
                 ],
               ),
+            ),
+            const SizedBox(width: 4),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ActionBtn(
+                    icon: Icons.edit_outlined,
+                    color: _kPrimary,
+                    tooltip: 'Edit',
+                    onPressed: onEdit),
+                _ActionBtn(
+                    icon: Icons.delete_outline,
+                    color: Colors.red.shade400,
+                    tooltip: 'Delete',
+                    onPressed: onDelete),
+              ],
             ),
           ],
         ),
@@ -262,7 +404,7 @@ class _HeaderCell extends StatelessWidget {
   }
 }
 
-// ── Client row ───────────────────────────────────────────────────────────────
+// ── Desktop table row ────────────────────────────────────────────────────────
 
 class _ClientRow extends StatelessWidget {
   final UserModel user;
@@ -289,7 +431,6 @@ class _ClientRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
-          // Name + avatar
           Expanded(
             flex: 3,
             child: Row(
@@ -321,7 +462,6 @@ class _ClientRow extends StatelessWidget {
               ],
             ),
           ),
-          // Email
           Expanded(
             flex: 3,
             child: Text(
@@ -330,7 +470,6 @@ class _ClientRow extends StatelessWidget {
               style: const TextStyle(fontSize: 13, color: _kBodyText),
             ),
           ),
-          // Role badge
           Expanded(
             flex: 2,
             child: Align(
@@ -355,7 +494,6 @@ class _ClientRow extends StatelessWidget {
               ),
             ),
           ),
-          // Joined date
           Expanded(
             flex: 2,
             child: Text(
@@ -363,7 +501,6 @@ class _ClientRow extends StatelessWidget {
               style: const TextStyle(fontSize: 13, color: _kBodyText),
             ),
           ),
-          // Actions
           SizedBox(
             width: 88,
             child: Row(
@@ -432,7 +569,6 @@ class _Pagination extends StatelessWidget {
     final pages = state.pages;
     final current = state.page;
 
-    // Build the visible page numbers: always show first, last, current ± 1
     final Set<int> show = {1, pages};
     for (int p = current - 1; p <= current + 1; p++) {
       if (p >= 1 && p <= pages) show.add(p);
@@ -496,18 +632,18 @@ class _PageBtn extends StatelessWidget {
         child: TextButton(
           onPressed: onPressed,
           style: TextButton.styleFrom(
-            backgroundColor: isActive ? _kPrimary : Colors.transparent,
+            backgroundColor:
+                isActive ? _kPrimary : Colors.transparent,
             foregroundColor: isActive
                 ? Colors.white
                 : (onPressed != null ? _kBodyText : _kMuted),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6)),
             padding: EdgeInsets.zero,
           ),
           child: icon != null
               ? Icon(icon, size: 18)
-              : Text(label ?? '',
-                  style: const TextStyle(fontSize: 13)),
+              : Text(label ?? '', style: const TextStyle(fontSize: 13)),
         ),
       ),
     );

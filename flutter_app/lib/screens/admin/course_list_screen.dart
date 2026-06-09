@@ -144,41 +144,112 @@ class _CourseRow extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: _kBorderColor)),
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            ClipRRect(
+        child: LayoutBuilder(
+          builder: (_, constraints) {
+            final narrow = constraints.maxWidth < 420;
+
+            final thumbnail = ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: course.thumbnail != null
-                  ? CachedNetworkImage(imageUrl: course.thumbnail!, width: 64, height: 56, fit: BoxFit.cover,
+                  ? CachedNetworkImage(
+                      imageUrl: course.thumbnail!,
+                      width: 64,
+                      height: 56,
+                      fit: BoxFit.cover,
                       errorWidget: (_, __, ___) => _thumb(course.gold))
                   : _thumb(course.gold),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(course.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _kTitleColor), maxLines: 1, overflow: TextOverflow.ellipsis),
+            );
+
+            final titleCol = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(course.title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: _kTitleColor),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
-                Text(course.category, style: const TextStyle(fontSize: 12, color: _kMutedColor)),
-              ]),
-            ),
-            const SizedBox(width: 12),
-            Text('Rs. ${course.price.toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.w700, color: _kPrimary, fontSize: 15)),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                Text(course.category,
+                    style: const TextStyle(
+                        fontSize: 12, color: _kMutedColor)),
+              ],
+            );
+
+            final priceText = Text(
+              'Rs. ${course.price.toStringAsFixed(2)}',
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: _kPrimary,
+                  fontSize: 15),
+            );
+
+            final statusBadge = Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: course.isPublished ? const Color(0xFFDCFCE7) : const Color(0xFFF3F4F6),
+                color: course.isPublished
+                    ? const Color(0xFFDCFCE7)
+                    : const Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(course.isPublished ? 'Published' : 'Draft',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                      color: course.isPublished ? const Color(0xFF166534) : _kMutedColor)),
-            ),
-            const SizedBox(width: 8),
-            IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: _kPrimary), onPressed: onEdit, tooltip: 'Edit'),
-            IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red), onPressed: onDelete, tooltip: 'Delete'),
-          ],
+              child: Text(
+                course.isPublished ? 'Published' : 'Draft',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: course.isPublished
+                        ? const Color(0xFF166534)
+                        : _kMutedColor),
+              ),
+            );
+
+            final editBtn = IconButton(
+                icon: const Icon(Icons.edit_outlined,
+                    size: 18, color: _kPrimary),
+                onPressed: onEdit,
+                tooltip: 'Edit');
+            final deleteBtn = IconButton(
+                icon: const Icon(Icons.delete_outline,
+                    size: 18, color: Colors.red),
+                onPressed: onDelete,
+                tooltip: 'Delete');
+
+            if (narrow) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    thumbnail,
+                    const SizedBox(width: 12),
+                    Expanded(child: titleCol),
+                    editBtn,
+                    deleteBtn,
+                  ]),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    priceText,
+                    const SizedBox(width: 8),
+                    statusBadge,
+                  ]),
+                ],
+              );
+            }
+
+            return Row(children: [
+              thumbnail,
+              const SizedBox(width: 14),
+              Expanded(child: titleCol),
+              const SizedBox(width: 12),
+              priceText,
+              const SizedBox(width: 8),
+              statusBadge,
+              const SizedBox(width: 4),
+              editBtn,
+              deleteBtn,
+            ]);
+          },
         ),
       ),
     );
