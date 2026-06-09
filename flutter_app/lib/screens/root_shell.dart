@@ -101,18 +101,6 @@ class _RootShellState extends ConsumerState<RootShell> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: AppDrawer(currentIndex: _index, onNavigate: _navigate),
-      floatingActionButton: AnimatedScale(
-        scale: _showScrollTop ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        child: FloatingActionButton.small(
-          onPressed: _scrollToTop,
-          backgroundColor: const Color(0xFF1A3B8B),
-          foregroundColor: Colors.white,
-          tooltip: 'Back to top',
-          child: const Icon(Icons.keyboard_arrow_up_rounded, size: 26),
-        ),
-      ),
       body: Stack(
         children: [
           Column(
@@ -135,31 +123,67 @@ class _RootShellState extends ConsumerState<RootShell> {
               ),
             ],
           ),
-          // WhatsApp floating button — bottom-left
+
+          // WhatsApp floating button — bottom-right
           Positioned(
-            left: 16,
+            right: 16,
             bottom: 16,
             child: Tooltip(
               message: 'Chat on WhatsApp',
               child: GestureDetector(
                 onTap: _openWhatsApp,
                 child: Container(
-                  width: 52,
-                  height: 52,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF25D366),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF25D366).withValues(alpha: 0.45),
+                        color: const Color(0xFF25D366).withValues(alpha: 0.5),
                         blurRadius: 16,
                         offset: const Offset(0, 6),
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.chat_rounded,
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/whatsapp.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Scroll-to-top button — above WhatsApp
+          Positioned(
+            right: 16,
+            bottom: 84,
+            child: AnimatedScale(
+              scale: _showScrollTop ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: Tooltip(
+                message: 'Back to top',
+                child: GestureDetector(
+                  onTap: _scrollToTop,
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A3B8B),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.keyboard_arrow_up_rounded,
                       color: Colors.white,
                       size: 26,
                     ),
