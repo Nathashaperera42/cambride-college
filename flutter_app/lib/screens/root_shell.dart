@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_header.dart';
 import '../widgets/app_footer.dart';
@@ -54,6 +55,13 @@ class _RootShellState extends ConsumerState<RootShell> {
     );
   }
 
+  Future<void> _openWhatsApp() async {
+    final uri = Uri.parse('https://wa.me/94767731989');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   Widget _buildPage() {
     switch (_index) {
       case 1:
@@ -105,21 +113,58 @@ class _RootShellState extends ConsumerState<RootShell> {
           child: const Icon(Icons.keyboard_arrow_up_rounded, size: 26),
         ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          AppHeader(
-            currentIndex: _index,
-            onNavigate: _navigate,
-            onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(),
+          Column(
+            children: [
+              AppHeader(
+                currentIndex: _index,
+                onNavigate: _navigate,
+                onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  child: Column(
+                    children: [
+                      _buildPage(),
+                      AppFooter(onNavigate: _navigate),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              child: Column(
-                children: [
-                  _buildPage(),
-                  AppFooter(onNavigate: _navigate),
-                ],
+          // WhatsApp floating button — bottom-left
+          Positioned(
+            left: 16,
+            bottom: 16,
+            child: Tooltip(
+              message: 'Chat on WhatsApp',
+              child: GestureDetector(
+                onTap: _openWhatsApp,
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF25D366),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF25D366).withValues(alpha: 0.45),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.chat_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
