@@ -31,6 +31,9 @@ class AboutPage extends StatelessWidget {
 class _AboutBody extends StatelessWidget {
   const _AboutBody();
 
+  static const _teacherImg =
+      'https://res.cloudinary.com/dsypqpuci/image/upload/v1780423579/WhatsApp_Image_2026-03-26_at_17.02.35_uupaer.jpg';
+
   @override
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(context);
@@ -77,41 +80,78 @@ class _AboutBody extends StatelessWidget {
       ],
     );
 
-    final imageCol = Container(
-      height: 360,
-      decoration: BoxDecoration(
-        gradient: AppColors.blueCardGradient,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Stack(
-        children: [
-          const Center(
-            child: Icon(Icons.school, color: Colors.white24, size: 90),
-          ),
-          Positioned(
-            left: 20,
-            bottom: 20,
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.royalBlue,
-                borderRadius: BorderRadius.circular(16),
+    final imageCol = ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: SizedBox(
+        height: 360,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Teacher photo from Cloudinary
+            CachedNetworkImage(
+              imageUrl: _teacherImg,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(
+                decoration: const BoxDecoration(
+                    gradient: AppColors.blueCardGradient),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                      color: Colors.white54, strokeWidth: 2),
+                ),
               ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('10+',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 34,
-                          fontWeight: FontWeight.w800)),
-                  Text('Years of\nExcellence',
-                      style: TextStyle(color: Colors.white70, height: 1.3)),
-                ],
+              errorWidget: (_, __, ___) => Container(
+                decoration: const BoxDecoration(
+                    gradient: AppColors.blueCardGradient),
+                child: const Center(
+                  child: Icon(Icons.school, color: Colors.white24, size: 90),
+                ),
               ),
             ),
-          ),
-        ],
+            // Subtle dark overlay so the stat card text reads cleanly
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Color(0x99000000)],
+                  stops: [0.45, 1.0],
+                ),
+              ),
+            ),
+            // Stat card overlay
+            Positioned(
+              left: 20,
+              bottom: 20,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.royalBlue,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('10+',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 34,
+                            fontWeight: FontWeight.w800)),
+                    Text('Years of\nExcellence',
+                        style:
+                            TextStyle(color: Colors.white70, height: 1.3)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
 

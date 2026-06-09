@@ -49,14 +49,14 @@ class AppFooter extends StatelessWidget {
             .map((n) => _LinkData(n.label, () => onNavigate(n.index)))
             .toList(),
       ),
-      const _FooterLinks(
+      _FooterLinks(
         title: 'Our Courses',
         items: [
-          _LinkData('Young Learners English', null),
-          _LinkData('Key English Test', null),
-          _LinkData('Preliminary English', null),
-          _LinkData('First Certificate', null),
-          _LinkData('Adults Spoken English', null),
+          _LinkData('Young Learners English', () => onNavigate(1)),
+          _LinkData('Key English Test', () => onNavigate(1)),
+          _LinkData('Preliminary English', () => onNavigate(1)),
+          _LinkData('First Certificate', () => onNavigate(1)),
+          _LinkData('Adults Spoken English', () => onNavigate(1)),
         ],
       ),
       SizedBox(
@@ -144,9 +144,19 @@ class _FooterLinks extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 10),
               child: InkWell(
                 onTap: l.onTap,
-                child: Text(
-                  l.label,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                hoverColor: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    l.label,
+                    style: TextStyle(
+                      color: l.onTap != null
+                          ? Colors.white70
+                          : Colors.white38,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -188,14 +198,19 @@ class _FooterSocial extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+    return InkWell(
+      onTap: () {},
+      borderRadius: BorderRadius.circular(8),
+      hoverColor: Colors.white.withValues(alpha: 0.12),
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: Colors.white),
       ),
-      child: Icon(icon, size: 16, color: Colors.white),
     );
   }
 }

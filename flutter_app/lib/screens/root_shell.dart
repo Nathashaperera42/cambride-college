@@ -24,6 +24,16 @@ class _RootShellState extends ConsumerState<RootShell> {
   int _index = 0;
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _scrollController = ScrollController();
+  bool _showScrollTop = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      final show = _scrollController.offset > 300;
+      if (show != _showScrollTop) setState(() => _showScrollTop = show);
+    });
+  }
 
   void _navigate(int i) {
     setState(() => _index = i);
@@ -34,6 +44,14 @@ class _RootShellState extends ConsumerState<RootShell> {
         curve: Curves.easeOut,
       );
     }
+  }
+
+  void _scrollToTop() {
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOut,
+    );
   }
 
   Widget _buildPage() {
@@ -75,6 +93,18 @@ class _RootShellState extends ConsumerState<RootShell> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: AppDrawer(currentIndex: _index, onNavigate: _navigate),
+      floatingActionButton: AnimatedScale(
+        scale: _showScrollTop ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        child: FloatingActionButton.small(
+          onPressed: _scrollToTop,
+          backgroundColor: const Color(0xFF1A3B8B),
+          foregroundColor: Colors.white,
+          tooltip: 'Back to top',
+          child: const Icon(Icons.keyboard_arrow_up_rounded, size: 26),
+        ),
+      ),
       body: Column(
         children: [
           AppHeader(
