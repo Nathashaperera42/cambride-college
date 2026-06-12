@@ -290,7 +290,8 @@ class _HeroSliderState extends State<HeroSlider>
                   right: compact ? hpad : w * 0.45,
                   bottom: cardsBottom + cardH + (compact ? 20 : 28),
                   top: widget.showNavBar ? 90 : 24,
-                  child: Center(
+                  child: Align(
+                    alignment: const Alignment(-1.0, 0.4),
                     child: _HeroText(
                       destination: textDest,
                       controller: _textCtrl,
