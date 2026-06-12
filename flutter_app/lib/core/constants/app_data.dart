@@ -24,6 +24,9 @@ class AppData {
   static const String missionEyebrow = 'OUR MISSION & VISION';
   static const String missionSectionTitle =
       'Discover The Core Principles That Guide Us';
+  static const String missionSubtitle =
+      'Forming confident, globally-minded communicators through Cambridge '
+      'English Qualifications — wherever your journey leads.';
   static const String visionTitle = 'Our Vision';
   static const String visionBody =
       'To form confident, globally-minded communicators who open doors '

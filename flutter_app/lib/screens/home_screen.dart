@@ -114,68 +114,6 @@ class _ImageBox extends StatelessWidget {
   }
 }
 
-class _VideoBox extends StatefulWidget {
-  final String url;
-  final double height;
-  const _VideoBox({required this.url, required this.height});
-
-  @override
-  State<_VideoBox> createState() => _VideoBoxState();
-}
-
-class _VideoBoxState extends State<_VideoBox> {
-  late VideoPlayerController _controller;
-  bool _ready = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..setLooping(true)
-      ..setVolume(0)
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() => _ready = true);
-          _controller.play();
-        }
-      });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: SizedBox(
-        height: widget.height,
-        width: double.infinity,
-        child: _ready
-            ? FittedBox(
-                fit: BoxFit.cover,
-                clipBehavior: Clip.hardEdge,
-                child: SizedBox(
-                  width: _controller.value.size.width,
-                  height: _controller.value.size.height,
-                  child: VideoPlayer(_controller),
-                ),
-              )
-            : Container(
-                decoration: const BoxDecoration(
-                    gradient: AppColors.blueCardGradient),
-                child: const Center(
-                  child: CircularProgressIndicator(color: Colors.white54),
-                ),
-              ),
-      ),
-    );
-  }
-}
-
 class _StatBadge extends StatelessWidget {
   final String value;
   final String label;
@@ -346,6 +284,9 @@ class _AboutSection extends StatelessWidget {
   }
 }
 
+const String _kMissionVideoUrl =
+    'https://res.cloudinary.com/dsypqpuci/video/upload/v1780471003/AQMEXxU5MvcjMxEpGv7sutHrMLZ7FwtPIyIqAU-pcRCemuSHEKz61thZTeaopfitBYj2tpiZxwxOmeuT9VA4hGduSNsXNDP2g2iIfh4cvOCtzg_-_Trim_nev04q.mp4';
+
 class _MissionVisionSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -367,48 +308,113 @@ class _MissionVisionSection extends StatelessWidget {
       ],
     );
 
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      decoration: const BoxDecoration(gradient: AppColors.blueCardGradient),
-      child: ContentWrap(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 72),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _Eyebrow(AppData.missionEyebrow, onDark: true),
-            const SizedBox(height: 16),
-            Text(AppData.missionSectionTitle,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: Colors.white, fontSize: isMobile ? 26 : 34)),
-            const SizedBox(height: 36),
-            isMobile
-                ? Column(children: [
-                    const _VideoBox(
-                      height: 200,
-                      url:
-                          'https://res.cloudinary.com/dsypqpuci/video/upload/v1780471003/AQMEXxU5MvcjMxEpGv7sutHrMLZ7FwtPIyIqAU-pcRCemuSHEKz61thZTeaopfitBYj2tpiZxwxOmeuT9VA4hGduSNsXNDP2g2iIfh4cvOCtzg_-_Trim_nev04q.mp4',
-                    ),
-                    const SizedBox(height: 24),
-                    cards,
-                  ])
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Expanded(
-                        flex: 4,
-                        child: _VideoBox(
-                          height: 240,
-                          url:
-                              'https://res.cloudinary.com/dsypqpuci/video/upload/v1780471003/AQMEXxU5MvcjMxEpGv7sutHrMLZ7FwtPIyIqAU-pcRCemuSHEKz61thZTeaopfitBYj2tpiZxwxOmeuT9VA4hGduSNsXNDP2g2iIfh4cvOCtzg_-_Trim_nev04q.mp4',
-                        ),
-                      ),
-                      const SizedBox(width: 28),
-                      Expanded(flex: 6, child: cards),
-                    ],
-                  ),
-            const SizedBox(height: 40),
-            _StatsBar(),
-          ],
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: [
+          const Positioned.fill(
+            child: _VideoBackground(url: _kMissionVideoUrl),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xCC062A5C),
+                    Color(0x99083B7A),
+                    Color(0xE6062A5C),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          ContentWrap(
+            padding: EdgeInsets.symmetric(
+                horizontal: 24, vertical: isMobile ? 56 : 88),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _Eyebrow(AppData.missionEyebrow, onDark: true),
+                const SizedBox(height: 16),
+                Text(AppData.missionSectionTitle,
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineMedium
+                        ?.copyWith(
+                            color: Colors.white,
+                            fontSize: isMobile ? 26 : 40,
+                            fontWeight: FontWeight.w800)),
+                const SizedBox(height: 14),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: isMobile ? 520 : 640),
+                  child: Text(AppData.missionSubtitle,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: isMobile ? 14 : 16,
+                          height: 1.7)),
+                ),
+                const SizedBox(height: 40),
+                cards,
+                const SizedBox(height: 40),
+                _StatsBar(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VideoBackground extends StatefulWidget {
+  final String url;
+  const _VideoBackground({required this.url});
+
+  @override
+  State<_VideoBackground> createState() => _VideoBackgroundState();
+}
+
+class _VideoBackgroundState extends State<_VideoBackground> {
+  late VideoPlayerController _controller;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..setLooping(true)
+      ..setVolume(0)
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() => _ready = true);
+          _controller.play();
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return const ColoredBox(color: AppColors.darkNavy);
+    }
+    return ColoredBox(
+      color: AppColors.darkNavy,
+      child: FittedBox(
+        fit: BoxFit.cover,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(
+          width: _controller.value.size.width,
+          height: _controller.value.size.height,
+          child: VideoPlayer(_controller),
         ),
       ),
     );
