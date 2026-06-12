@@ -1,13 +1,15 @@
 import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../core/constants/app_theme.dart';
 
 /// ---------------------------------------------------------------------------
-/// HERO SLIDER  —  full-bleed slider hero (Globe-Express style) adapted for
-/// the Cambridge site. The active slide fills the background; the upcoming
-/// slides appear as a card carousel on the right that conveyor-shifts left as
-/// it advances. Eyebrow + title + counter swap in sync. Auto-plays and has
-/// manual prev/next arrows. Fully responsive (desktop / tablet / mobile).
+/// HERO SLIDER — card-expansion slider hero. The front-most card in the right
+/// side carousel expands to fill the screen and becomes the new background as
+/// the slide advances. Eyebrow + title + description swap in with a staggered
+/// reveal. Auto-plays and has manual prev/next controls. Fully responsive.
 ///
 ///  >>> TO EDIT CONTENT: just change the `kHeroSlides` list below. <<<
 ///  Add as many slides as you like — the carousel adapts automatically.
@@ -92,32 +94,6 @@ const List<HeroSlide> kHeroSlides = [
   ),
 ];
 
-/// Responsive layout configuration for a given width.
-class _Cfg {
-  final int visible; // cards fully visible
-  final double cardW;
-  final double cardH;
-  final double gap;
-  final double peek; // sliver of the next card revealed
-  final bool stacked; // true => vertical (mobile) arrangement
-  const _Cfg(
-    this.visible,
-    this.cardW,
-    this.cardH,
-    this.gap,
-    this.peek,
-    this.stacked,
-  );
-}
-
-_Cfg _cfgFor(double w) {
-  if (w >= 1280) return const _Cfg(4, 160, 240, 14, 36, false);
-  if (w >= 1024) return const _Cfg(3, 155, 232, 14, 36, false);
-  if (w >= 760)  return const _Cfg(2, 148, 222, 14, 32, false);
-  if (w >= 520)  return const _Cfg(2, 140, 190, 12, 28, true);
-  return         const _Cfg(1, 156, 194, 12, 80, true);
-}
-
 class HeroSlider extends StatefulWidget {
   /// Same navigation callback used elsewhere in the app.
   final ValueChanged<int> onNavigate;
@@ -137,54 +113,83 @@ class HeroSlider extends StatefulWidget {
 }
 
 class _HeroSliderState extends State<HeroSlider>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 680),
-  );
+    with TickerProviderStateMixin {
+  int _active = 0;
+  int? _incoming; // slide currently expanding into the background
+  bool _reverse = false; // prev (fade) vs next (card-expand)
 
-  int _index = 0;
-  int _dir = 1; // +1 next, -1 prev
-  Timer? _auto;
+  late final AnimationController _expandCtrl; // card -> fullscreen
+  late final AnimationController _textCtrl; // staggered text entrance
+  Timer? _autoplay;
 
   int get _n => kHeroSlides.length;
-  int _wrap(int i) => ((i % _n) + _n) % _n;
-  int get _target => _wrap(_index + _dir);
+  bool get _busy => _incoming != null;
 
   @override
   void initState() {
     super.initState();
-    _startAuto();
+    _expandCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900));
+    _textCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200));
+    _textCtrl.forward();
+    _startAutoplay();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final s in kHeroSlides) {
+        precacheImage(NetworkImage(s.image), context);
+      }
+    });
+  }
+
+  void _startAutoplay() {
+    _autoplay?.cancel();
+    if (_n <= 1) return;
+    _autoplay = Timer.periodic(
+        const Duration(seconds: 6), (_) => _goNext(userTriggered: false));
   }
 
   @override
   void dispose() {
-    _auto?.cancel();
-    _ctrl.dispose();
+    _autoplay?.cancel();
+    _expandCtrl.dispose();
+    _textCtrl.dispose();
     super.dispose();
   }
 
-  void _startAuto() {
-    _auto?.cancel();
-    if (_n <= 1) return;
-    _auto = Timer.periodic(const Duration(seconds: 6), (_) {
-      if (mounted && !_ctrl.isAnimating) _advance(1);
+  Future<void> _goNext({bool userTriggered = true}) async {
+    if (_busy || !mounted || _n <= 1) return;
+    if (userTriggered) _startAutoplay();
+    setState(() {
+      _reverse = false;
+      _incoming = (_active + 1) % _n;
     });
+    _textCtrl.value = 0;
+    await _expandCtrl.forward(from: 0);
+    if (!mounted) return;
+    setState(() {
+      _active = _incoming!;
+      _incoming = null;
+      _expandCtrl.value = 0;
+    });
+    _textCtrl.forward(from: 0);
   }
 
-  void _advance(int dir) {
-    if (_ctrl.isAnimating || _n <= 1) return;
-    setState(() => _dir = dir);
-    _ctrl.forward(from: 0).then((_) {
-      if (!mounted) return;
-      setState(() => _index = _wrap(_index + dir));
-      _ctrl.value = 0;
+  Future<void> _goPrev() async {
+    if (_busy || !mounted || _n <= 1) return;
+    _startAutoplay();
+    setState(() {
+      _reverse = true;
+      _incoming = (_active - 1 + _n) % _n;
     });
-  }
-
-  void _manual(int dir) {
-    _advance(dir);
-    _startAuto(); // reset the auto-play timer after a manual tap
+    _textCtrl.value = 0;
+    await _expandCtrl.forward(from: 0);
+    if (!mounted) return;
+    setState(() {
+      _active = _incoming!;
+      _incoming = null;
+      _expandCtrl.value = 0;
+    });
+    _textCtrl.forward(from: 0);
   }
 
   @override
@@ -192,495 +197,234 @@ class _HeroSliderState extends State<HeroSlider>
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        final cfg = _cfgFor(w);
         final screenH = MediaQuery.of(context).size.height;
-        final heroH = (cfg.stacked
+        final compact = w < 760;
+        final heroH = (compact
                 ? screenH.clamp(720.0, 1100.0)
                 : screenH.clamp(620.0, 920.0))
             .toDouble();
 
+        // ── card geometry ────────────────────────────────────────────────
+        final int visible =
+            w >= 1280 ? 4 : (w >= 1024 ? 3 : (w >= 760 ? 2 : 1));
+        final double cardH = w >= 1280
+            ? 240
+            : (w >= 1024
+                ? 225
+                : (w >= 760 ? 210 : (w >= 520 ? 180 : 160)));
+        final cardW = cardH * 0.68;
+        const cardGap = 14.0;
+        final hpad = compact ? 22.0 : (w >= 1100 ? 56.0 : 32.0);
+
+        // controls sit near the bottom edge; cards sit just above them.
+        const controlsH = 46.0;
+        final cardsBottom = controlsH + (compact ? 26.0 : 36.0);
+        final totalCardsW = visible * cardW + (visible - 1) * cardGap;
+        final firstCardLeft = w - hpad - totalCardsW;
+        final firstCardRect = Rect.fromLTWH(
+            firstCardLeft, heroH - cardsBottom - cardH, cardW, cardH);
+
+        final active = kHeroSlides[_active];
+        final textDest = _busy ? kHeroSlides[_incoming!] : active;
+
         return SizedBox(
           width: double.infinity,
           height: heroH,
-          child: AnimatedBuilder(
-            animation: _ctrl,
-            builder: (context, _) {
-              final t = _ctrl.value;
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  _background(t),
-                  // top gold accent line (like the reference)
-                  const Positioned(
+          child: ClipRect(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _BgImage(url: active.image),
+                if (_incoming != null)
+                  AnimatedBuilder(
+                    animation: _expandCtrl,
+                    builder: (context, _) {
+                      final t =
+                          Curves.easeInOutCubic.transform(_expandCtrl.value);
+                      final incoming = kHeroSlides[_incoming!];
+                      if (_reverse) {
+                        // prev: full-screen fade with a gentle settle-scale
+                        return Opacity(
+                          opacity: t,
+                          child: Transform.scale(
+                            scale: lerpDouble(1.08, 1.0, t)!,
+                            child: _BgImage(url: incoming.image),
+                          ),
+                        );
+                      }
+                      // next: the first card grows until it fills the screen
+                      final rect = Rect.lerp(
+                          firstCardRect, Offset.zero & Size(w, heroH), t)!;
+                      final radius = lerpDouble(18, 0, t)!;
+                      return Positioned.fromRect(
+                        rect: rect,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(radius),
+                          child: _BgImage(url: incoming.image),
+                        ),
+                      );
+                    },
+                  ),
+                const _Scrim(),
+                // top gold accent line
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SizedBox(
+                    height: 3,
+                    child: ColoredBox(color: AppColors.gold),
+                  ),
+                ),
+                if (widget.showNavBar)
+                  Positioned(
                     top: 0,
                     left: 0,
                     right: 0,
-                    child: SizedBox(
-                      height: 3,
-                      child: ColoredBox(color: AppColors.gold),
+                    child: _NavBar(
+                        compact: compact, onNavigate: widget.onNavigate),
+                  ),
+                // left text block — sits above the cards/controls
+                Positioned(
+                  left: hpad,
+                  right: compact ? hpad : w * 0.45,
+                  bottom: cardsBottom + cardH + (compact ? 20 : 28),
+                  top: widget.showNavBar ? 90 : 24,
+                  child: Center(
+                    child: _HeroText(
+                      destination: textDest,
+                      controller: _textCtrl,
+                      compact: compact,
+                      onNavigate: widget.onNavigate,
                     ),
                   ),
-                  Positioned.fill(
-                    child: cfg.stacked
-                        ? _stackedContent(t, cfg)
-                        : _wideContent(t, cfg, w),
+                ),
+                // destination cards
+                Positioned(
+                  right: hpad,
+                  bottom: cardsBottom,
+                  height: cardH,
+                  child: _CardRow(
+                    activeIndex: _active,
+                    cardWidth: cardW,
+                    cardHeight: cardH,
+                    gap: cardGap,
+                    visible: visible,
+                    expandCtrl: _expandCtrl,
+                    animatingNext: _busy && !_reverse,
+                    onTapFirst: _goNext,
                   ),
-                ],
-              );
-            },
+                ),
+                // bottom controls: arrows / progress / counter
+                Positioned(
+                  left: hpad,
+                  right: hpad,
+                  bottom: compact ? 14 : 18,
+                  child: _BottomControls(
+                    index: _busy ? _incoming! : _active,
+                    total: _n,
+                    onPrev: _goPrev,
+                    onNext: _goNext,
+                    compact: compact,
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
+}
 
-  // ----- background -------------------------------------------------------
+// ---------------------------------------------------------------------------
+// BACKGROUND
+// ---------------------------------------------------------------------------
 
-  Widget _background(double t) {
-    final cur = kHeroSlides[_index];
-    final tgt = kHeroSlides[_target];
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        _bgImage(cur.image),
-        if (t > 0)
-          Opacity(opacity: t.clamp(0.0, 1.0).toDouble(), child: _bgImage(tgt.image)),
-        // left-to-right darkening for text legibility
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [Color(0xF20A1B36), Color(0x990A1B36), Color(0x1A0A1B36)],
-              stops: [0.0, 0.5, 1.0],
-            ),
-          ),
-        ),
-        // bottom vignette
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [Color(0xCC061229), Color(0x00061229)],
-              stops: [0.0, 0.55],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+class _BgImage extends StatelessWidget {
+  final String url;
+  const _BgImage({required this.url});
 
-  Widget _bgImage(String url) {
+  @override
+  Widget build(BuildContext context) {
     return Image.network(
       url,
       fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
       gaplessPlayback: true,
-      loadingBuilder: (c, child, progress) =>
+      errorBuilder: (_, __, ___) => const ColoredBox(color: AppColors.darkNavy),
+      loadingBuilder: (context, child, progress) =>
           progress == null ? child : const ColoredBox(color: AppColors.darkNavy),
-      errorBuilder: (c, e, s) => const ColoredBox(color: AppColors.darkNavy),
     );
   }
+}
 
-  // ----- wide (desktop / tablet) layout -----------------------------------
+class _Scrim extends StatelessWidget {
+  const _Scrim();
 
-  Widget _wideContent(double t, _Cfg cfg, double w) {
-    final hpad = w >= 1100 ? 48.0 : 28.0;
-    return SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1320),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(hpad, 16, hpad, 26),
-            child: Column(
-              children: [
-                if (widget.showNavBar) _navBar(false),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(child: _leftBlock(t, false)),
-                      const SizedBox(width: 80),
-                      _cardViewport(t, cfg),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                _controls(t, false),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ----- stacked (mobile) layout ------------------------------------------
-
-  Widget _stackedContent(double t, _Cfg cfg) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 14, 22, 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (widget.showNavBar) _navBar(true),
-            const Spacer(),
-            _animatedText(t, true),
-            const SizedBox(height: 22),
-            _buttonsRow(),
-            const SizedBox(height: 26),
-            _cardViewport(t, cfg),
-            const SizedBox(height: 18),
-            _controls(t, true),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ----- left text block --------------------------------------------------
-
-  Widget _leftBlock(double t, bool small) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _animatedText(t, small),
-        const SizedBox(height: 28),
-        _buttonsRow(),
-      ],
-    );
-  }
-
-  Widget _animatedText(double t, bool small) {
-    final outOpacity = (1 - t).clamp(0.0, 1.0).toDouble();
-    final inOpacity = t.clamp(0.0, 1.0).toDouble();
-    return Stack(
-      children: [
-        Opacity(
-          opacity: outOpacity,
-          child: Transform.translate(
-            offset: Offset(0, -18 * t),
-            child: _textContent(kHeroSlides[_index], small),
-          ),
-        ),
-        if (t > 0)
-          Positioned.fill(
-            child: Opacity(
-              opacity: inOpacity,
-              child: Transform.translate(
-                offset: Offset(0, 18 * (1 - t)),
-                child: _textContent(kHeroSlides[_target], small),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _textContent(HeroSlide s, bool small) {
-    final titleSize = small ? 34.0 : 56.0;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 28, height: 2, color: AppColors.gold),
-            const SizedBox(width: 10),
-            Text(
-              s.category,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                letterSpacing: 1.2,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Text(
-          s.titleLine1,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: titleSize,
-            height: 1.02,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.5,
-          ),
-        ),
-        Text(
-          s.titleLine2,
-          style: TextStyle(
-            color: AppColors.gold,
-            fontSize: titleSize,
-            height: 1.02,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 16),
-        ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: small ? 520 : 480),
-          child: Text(
-            s.description,
-            maxLines: small ? 2 : 3,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              height: 1.6,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buttonsRow() {
-    return Wrap(
-      spacing: 14,
-      runSpacing: 12,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        _Hoverable(
-          onTap: () => widget.onNavigate(5),
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: const BoxDecoration(
-              color: AppColors.gold,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.play_arrow_rounded,
-                color: AppColors.darkNavy, size: 26),
-          ),
-        ),
-        _Hoverable(
-          onTap: () => widget.onNavigate(1),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.white54),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'EXPLORE PROGRAMS',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    letterSpacing: 1.4,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_outward, color: AppColors.gold, size: 16),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ----- card carousel ----------------------------------------------------
-
-  Widget _cardViewport(double t, _Cfg cfg) {
-    final slot = cfg.cardW + cfg.gap;
-    final shift = t * _dir; // continuous shift, in slot units
-    final viewportW = cfg.visible * slot - cfg.gap + cfg.peek;
-    const featuredScale = 1.18;
-    final maxH = cfg.cardH * featuredScale;
-
-    final children = <Widget>[];
-    // render one buffer card on each side so slides flow in/out smoothly
-    for (int j = -1; j <= cfg.visible; j++) {
-      final idx = _wrap(_index + 1 + j);
-      final pos = j - shift; // 0 == front/featured slot
-      final proximity = (1 - pos.abs()).clamp(0.0, 1.0);
-      final scale = 1 + proximity * (featuredScale - 1);
-      final w = cfg.cardW * scale;
-      final h = cfg.cardH * scale;
-      children.add(Positioned(
-        left: pos * slot - (w - cfg.cardW) / 2,
-        top: (maxH - h) / 2,
-        width: w,
-        height: h,
-        child: _card(kHeroSlides[idx], emphasis: proximity),
-      ));
-    }
-
-    return SizedBox(
-      width: viewportW,
-      height: maxH,
-      child: ClipRect(
-        child: Stack(clipBehavior: Clip.none, children: children),
-      ),
-    );
-  }
-
-  Widget _card(HeroSlide s, {double emphasis = 0}) {
-    return _Hoverable(
-      onTap: () => widget.onNavigate(1),
-      scale: 1.03,
-      child: Container(
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35 + emphasis * 0.15),
-              blurRadius: 22 + emphasis * 14,
-              offset: Offset(0, 14 + emphasis * 6),
-            ),
-          ],
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              const Color(0xF20A1B36).withValues(alpha: 0.85),
+              const Color(0x990A1B36),
+              Colors.transparent,
+            ],
+            stops: const [0.0, 0.45, 0.85],
+          ),
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.network(
-              s.image,
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
-              loadingBuilder: (c, child, p) =>
-                  p == null ? child : const ColoredBox(color: AppColors.royalBlue),
-              errorBuilder: (c, e, st) =>
-                  const ColoredBox(color: AppColors.royalBlue),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.35),
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.5),
+              ],
+              stops: const [0.0, 0.35, 1.0],
             ),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [Color(0xE6041025), Color(0x00041025)],
-                  stops: [0.0, 0.62],
-                ),
-              ),
-            ),
-            Positioned(
-              top: 12,
-              left: 12,
-              right: 12,
-              child: Row(
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppColors.gold,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      s.category,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10.5,
-                        letterSpacing: 0.6,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              left: 14,
-              right: 14,
-              bottom: 16,
-              child: Text(
-                '${s.titleLine1} ${s.titleLine2}'.toUpperCase(),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  height: 1.15,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
+          ),
+          child: const SizedBox.expand(),
         ),
       ),
     );
   }
+}
 
-  // ----- bottom controls --------------------------------------------------
+// ---------------------------------------------------------------------------
+// NAV BAR
+// ---------------------------------------------------------------------------
 
-  Widget _controls(double t, bool small) {
-    return Row(
-      children: [
-        _arrow(Icons.arrow_back, () => _manual(-1)),
-        const SizedBox(width: 12),
-        _arrow(Icons.arrow_forward, () => _manual(1)),
-        const SizedBox(width: 22),
-        Expanded(child: _progress()),
-      ],
-    );
-  }
+class _NavBar extends StatelessWidget {
+  final bool compact;
+  final ValueChanged<int> onNavigate;
+  const _NavBar({required this.compact, required this.onNavigate});
 
-  Widget _arrow(IconData icon, VoidCallback onTap) {
-    return _Hoverable(
-      onTap: onTap,
-      child: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white38),
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
-      ),
-    );
-  }
-
-  Widget _progress() {
-    final frac =
-        ((_index + 1 + _ctrl.value * _dir) / _n).clamp(0.06, 1.0).toDouble();
-    return SizedBox(
-      height: 2,
-      child: LayoutBuilder(
-        builder: (c, cc) => Stack(
-          children: [
-            Container(height: 2, color: Colors.white24),
-            Container(height: 2, width: cc.maxWidth * frac, color: AppColors.gold),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ----- top nav (optional) ----------------------------------------------
-
-  Widget _navBar(bool small) {
+  @override
+  Widget build(BuildContext context) {
+    const items = ['Home', 'Courses', 'Programs', 'Gallery', 'About', 'Contact'];
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.symmetric(
+          horizontal: compact ? 22 : (compact ? 22 : 56), vertical: 22),
       child: Row(
         children: [
           _logo(),
-          if (!small) ...[
+          if (!compact) ...[
             Expanded(
               child: Center(
                 child: Wrap(
                   spacing: 26,
                   children: [
-                    _navLink('Home', 0),
-                    _navLink('Courses', 1),
-                    _navLink('Programs', 2),
-                    _navLink('Gallery', 3),
-                    _navLink('About', 4),
-                    _navLink('Contact', 5),
+                    for (var i = 0; i < items.length; i++)
+                      _navLink(items[i], i),
                   ],
                 ),
               ),
@@ -691,7 +435,7 @@ class _HeroSliderState extends State<HeroSlider>
           ] else ...[
             const Spacer(),
             _Hoverable(
-              onTap: () => widget.onNavigate(0),
+              onTap: () => onNavigate(0),
               child: _navIcon(Icons.menu),
             ),
           ],
@@ -708,16 +452,16 @@ class _HeroSliderState extends State<HeroSlider>
             height: 30,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [AppColors.gold, Color(0xFFE0B23A)],
+                colors: [AppColors.gold, AppColors.goldDark],
               ),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(Icons.school, color: AppColors.darkNavy, size: 18),
           ),
           const SizedBox(width: 10),
-          const Text(
-            'CAMBRIDGE', // <-- change to your institute name
-            style: TextStyle(
+          Text(
+            'CAMBRIDGE',
+            style: GoogleFonts.poppins(
               color: Colors.white,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.5,
@@ -728,11 +472,11 @@ class _HeroSliderState extends State<HeroSlider>
       );
 
   Widget _navLink(String label, int idx) => _Hoverable(
-        onTap: () => widget.onNavigate(idx),
+        onTap: () => onNavigate(idx),
         scale: 1.0,
         child: Text(
           label,
-          style: const TextStyle(
+          style: GoogleFonts.inter(
             color: Colors.white70,
             fontSize: 13,
             fontWeight: FontWeight.w500,
@@ -750,6 +494,402 @@ class _HeroSliderState extends State<HeroSlider>
         child: Icon(i, color: Colors.white, size: 18),
       );
 }
+
+// ---------------------------------------------------------------------------
+// LEFT TEXT BLOCK (staggered entrance)
+// ---------------------------------------------------------------------------
+
+class _HeroText extends StatelessWidget {
+  final HeroSlide destination;
+  final AnimationController controller;
+  final bool compact;
+  final ValueChanged<int> onNavigate;
+
+  const _HeroText({
+    required this.destination,
+    required this.controller,
+    required this.compact,
+    required this.onNavigate,
+  });
+
+  Animation<double> _interval(double start, double end) => CurvedAnimation(
+      parent: controller, curve: Interval(start, end, curve: Curves.easeOut));
+
+  Widget _reveal(Animation<double> anim, Widget child, {double dy = 30}) {
+    return AnimatedBuilder(
+      animation: anim,
+      builder: (context, _) => Opacity(
+        opacity: anim.value.clamp(0.0, 1.0),
+        child: Transform.translate(
+            offset: Offset(0, dy * (1 - anim.value)), child: child),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final titleSize = compact ? 36.0 : 58.0;
+    final titleStyle = GoogleFonts.poppins(
+      fontSize: titleSize,
+      fontWeight: FontWeight.w800,
+      height: 1.05,
+      letterSpacing: 0.5,
+      color: Colors.white,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _reveal(
+          _interval(0.0, 0.35),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 28, height: 2, color: AppColors.gold),
+              const SizedBox(width: 10),
+              Text(
+                destination.category,
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontSize: 13,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          dy: 18,
+        ),
+        const SizedBox(height: 14),
+        ClipRect(
+          child: _reveal(
+            _interval(0.1, 0.5),
+            Text(destination.titleLine1, style: titleStyle),
+            dy: 60,
+          ),
+        ),
+        ClipRect(
+          child: _reveal(
+            _interval(0.2, 0.6),
+            Text(destination.titleLine2,
+                style: titleStyle.copyWith(color: AppColors.gold)),
+            dy: 60,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _reveal(
+          _interval(0.35, 0.75),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: compact ? 520 : 480),
+            child: Text(
+              destination.description,
+              maxLines: compact ? 2 : 3,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                color: Colors.white70,
+                fontSize: 14,
+                height: 1.6,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _reveal(
+          _interval(0.5, 0.9),
+          Wrap(
+            spacing: 14,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _Hoverable(
+                onTap: () => onNavigate(5),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    color: AppColors.gold,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.play_arrow_rounded,
+                      color: AppColors.darkNavy, size: 26),
+                ),
+              ),
+              _Hoverable(
+                onTap: () => onNavigate(1),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.white54),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'EXPLORE PROGRAMS',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 12,
+                          letterSpacing: 1.4,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_outward,
+                          color: AppColors.gold, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CARD ROW
+// ---------------------------------------------------------------------------
+
+class _CardRow extends StatelessWidget {
+  final int activeIndex; // cards show activeIndex+1 .. activeIndex+visible
+  final double cardWidth;
+  final double cardHeight;
+  final double gap;
+  final int visible;
+  final AnimationController expandCtrl;
+  final bool animatingNext;
+  final VoidCallback onTapFirst;
+
+  const _CardRow({
+    required this.activeIndex,
+    required this.cardWidth,
+    required this.cardHeight,
+    required this.gap,
+    required this.visible,
+    required this.expandCtrl,
+    required this.animatingNext,
+    required this.onTapFirst,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final n = kHeroSlides.length;
+    return AnimatedBuilder(
+      animation: expandCtrl,
+      builder: (context, _) {
+        final t = animatingNext
+            ? Curves.easeInOutCubic.transform(expandCtrl.value)
+            : 0.0;
+        final shift = (cardWidth + gap) * t; // remaining cards slide left
+        final children = <Widget>[];
+        for (var i = 0; i < visible + 1; i++) {
+          final dest = kHeroSlides[(activeIndex + 1 + i) % n];
+          final isFirst = i == 0;
+          children.add(
+            Transform.translate(
+              offset: Offset(-shift, 0),
+              child: Opacity(
+                // First card fades as the expanding overlay takes over;
+                // the extra trailing card fades in as it enters.
+                opacity: isFirst
+                    ? (1 - t).clamp(0.0, 1.0)
+                    : (i == visible ? t : 1.0),
+                child: GestureDetector(
+                  onTap: isFirst ? onTapFirst : null,
+                  child: _DestinationCard(
+                    destination: dest,
+                    width: cardWidth,
+                    height: cardHeight,
+                  ),
+                ),
+              ),
+            ),
+          );
+          if (i < visible) children.add(SizedBox(width: gap));
+        }
+        return ClipRect(
+          child: Row(mainAxisSize: MainAxisSize.min, children: children),
+        );
+      },
+    );
+  }
+}
+
+class _DestinationCard extends StatelessWidget {
+  final HeroSlide destination;
+  final double width;
+  final double height;
+
+  const _DestinationCard({
+    required this.destination,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _BgImage(url: destination.image),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x00041025), Color(0xE6041025)],
+                  stops: [0.45, 1.0],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Container(width: 18, height: 2, color: AppColors.gold),
+                  const SizedBox(height: 8),
+                  Text(
+                    destination.category,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${destination.titleLine1}\n${destination.titleLine2}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      height: 1.15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// BOTTOM CONTROLS
+// ---------------------------------------------------------------------------
+
+class _BottomControls extends StatelessWidget {
+  final int index;
+  final int total;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+  final bool compact;
+
+  const _BottomControls({
+    required this.index,
+    required this.total,
+    required this.onPrev,
+    required this.onNext,
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _CircleButton(icon: Icons.arrow_back_ios_new, onTap: onPrev),
+        const SizedBox(width: 12),
+        _CircleButton(icon: Icons.arrow_forward_ios, onTap: onNext),
+        const SizedBox(width: 22),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, c) => Stack(
+              children: [
+                Container(height: 2, color: Colors.white24),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.easeInOutCubic,
+                  height: 2,
+                  width: c.maxWidth * ((index + 1) / total),
+                  color: AppColors.gold,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 22),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          transitionBuilder: (child, anim) => SlideTransition(
+            position: Tween(begin: const Offset(0, 0.6), end: Offset.zero)
+                .animate(anim),
+            child: FadeTransition(opacity: anim, child: child),
+          ),
+          child: Text(
+            (index + 1).toString().padLeft(2, '0'),
+            key: ValueKey(index),
+            style: GoogleFonts.poppins(
+              fontSize: compact ? 24 : 32,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _CircleButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return _Hoverable(
+      onTap: onTap,
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+        ),
+        child: Icon(icon, size: 14, color: Colors.white),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// HOVER HELPER
+// ---------------------------------------------------------------------------
 
 /// Small hover-to-scale + click-cursor wrapper for the web.
 class _Hoverable extends StatefulWidget {
