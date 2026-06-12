@@ -493,32 +493,39 @@ class _HeroSliderState extends State<HeroSlider>
 
   Widget _cardViewport(double t, _Cfg cfg) {
     final slot = cfg.cardW + cfg.gap;
-    final tx = -slot * t * _dir; // conveyor offset
+    final shift = t * _dir; // continuous shift, in slot units
     final viewportW = cfg.visible * slot - cfg.gap + cfg.peek;
+    const featuredScale = 1.18;
+    final maxH = cfg.cardH * featuredScale;
 
     final children = <Widget>[];
     // render one buffer card on each side so slides flow in/out smoothly
     for (int j = -1; j <= cfg.visible; j++) {
       final idx = _wrap(_index + 1 + j);
+      final pos = j - shift; // 0 == front/featured slot
+      final proximity = (1 - pos.abs()).clamp(0.0, 1.0);
+      final scale = 1 + proximity * (featuredScale - 1);
+      final w = cfg.cardW * scale;
+      final h = cfg.cardH * scale;
       children.add(Positioned(
-        left: j * slot + tx,
-        top: 0,
-        width: cfg.cardW,
-        height: cfg.cardH,
-        child: _card(kHeroSlides[idx]),
+        left: pos * slot - (w - cfg.cardW) / 2,
+        top: (maxH - h) / 2,
+        width: w,
+        height: h,
+        child: _card(kHeroSlides[idx], emphasis: proximity),
       ));
     }
 
     return SizedBox(
       width: viewportW,
-      height: cfg.cardH,
+      height: maxH,
       child: ClipRect(
         child: Stack(clipBehavior: Clip.none, children: children),
       ),
     );
   }
 
-  Widget _card(HeroSlide s) {
+  Widget _card(HeroSlide s, {double emphasis = 0}) {
     return _Hoverable(
       onTap: () => widget.onNavigate(1),
       scale: 1.03,
@@ -527,9 +534,9 @@ class _HeroSliderState extends State<HeroSlider>
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 22,
-              offset: const Offset(0, 14),
+              color: Colors.black.withValues(alpha: 0.35 + emphasis * 0.15),
+              blurRadius: 22 + emphasis * 14,
+              offset: Offset(0, 14 + emphasis * 6),
             ),
           ],
         ),
