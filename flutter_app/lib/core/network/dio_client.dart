@@ -3,12 +3,21 @@ import '../constants/api_constants.dart';
 import '../services/storage_service.dart';
 import 'api_exception.dart';
 
+// Paths that legitimately return 401 without meaning "your session expired"
+// (e.g. a wrong-password login attempt) — excluded from the global handler.
+const _kAuthEndpoints = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
+
 // Configures Dio and attaches the JWT via a request interceptor.
 class DioClient {
   final Dio dio;
   final StorageService storage;
 
-  DioClient(this.storage)
+  /// Called whenever a request that carried a session token comes back 401
+  /// (expired/invalid token or deleted user) — lets callers force a logout
+  /// and prompt re-login instead of failing silently.
+  final void Function()? onUnauthorized;
+
+  DioClient(this.storage, {this.onUnauthorized})
       : dio = Dio(
           BaseOptions(
             baseUrl: ApiConstants.baseUrl,
@@ -27,7 +36,13 @@ class DioClient {
           }
           handler.next(options);
         },
-        onError: (e, handler) => handler.next(e),
+        onError: (e, handler) {
+          final isAuthEndpoint = _kAuthEndpoints.any((p) => e.requestOptions.path.contains(p));
+          if (e.response?.statusCode == 401 && !isAuthEndpoint) {
+            onUnauthorized?.call();
+          }
+          handler.next(e);
+        },
       ),
     );
   }

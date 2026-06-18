@@ -5,18 +5,27 @@ import '../repositories/auth_repository.dart';
 import '../repositories/user_repository.dart';
 import '../repositories/course_repository.dart';
 import '../repositories/order_repository.dart';
-import '../repositories/site_image_repository.dart';
 import '../repositories/voice_of_trust_repository.dart';
 import '../repositories/review_repository.dart';
 import '../repositories/qualification_repository.dart';
 import '../repositories/website_asset_repository.dart';
 import '../repositories/course_review_repository.dart';
+import 'auth_provider.dart';
 
 final storageServiceProvider =
     Provider<StorageService>((ref) => StorageService());
 
 final dioClientProvider = Provider<DioClient>((ref) {
-  return DioClient(ref.read(storageServiceProvider));
+  return DioClient(
+    ref.read(storageServiceProvider),
+    // A 401 from an authenticated request means the session is no longer
+    // valid (expired/invalid token, or the user was deleted) — force a
+    // clean logout and prompt re-login instead of failing silently.
+    onUnauthorized: () {
+      ref.read(authProvider.notifier).logout();
+      ref.read(pendingLoginModalProvider.notifier).state = true;
+    },
+  );
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -33,10 +42,6 @@ final courseRepositoryProvider = Provider<CourseRepository>((ref) {
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   return OrderRepository(ref.read(dioClientProvider));
-});
-
-final siteImageRepositoryProvider = Provider<SiteImageRepository>((ref) {
-  return SiteImageRepository(ref.read(dioClientProvider));
 });
 
 final voiceOfTrustRepositoryProvider = Provider<VoiceOfTrustRepository>((ref) {

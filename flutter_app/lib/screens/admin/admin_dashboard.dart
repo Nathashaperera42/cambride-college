@@ -78,7 +78,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 _ActionCard(icon: Icons.receipt_long_outlined, title: 'View Orders', subtitle: 'See all customer orders', onTap: () => context.push(Routes.adminOrders), accentColor: _kGreen),
                 _ActionCard(icon: Icons.people_alt_outlined, title: 'Manage Clients', subtitle: 'View and edit client accounts', onTap: () => context.push(Routes.userList), accentColor: _kGold),
                 _ActionCard(icon: Icons.chat_bubble_outline_rounded, title: 'Contact Messages', subtitle: 'View customer inquiries', onTap: () => context.push(Routes.adminContacts), accentColor: _kRed, badgeCount: unreadMessages),
-                _ActionCard(icon: Icons.photo_library_outlined, title: 'Site Images', subtitle: 'Upload & manage website images', onTap: () => context.push(Routes.adminSiteImages), accentColor: const Color(0xFF7C3AED)),
                 _ActionCard(icon: Icons.person_outline, title: 'My Profile', subtitle: 'Update your admin account', onTap: () => context.push(Routes.profile), accentColor: _kMutedColor),
               ];
               if (twoCol) {

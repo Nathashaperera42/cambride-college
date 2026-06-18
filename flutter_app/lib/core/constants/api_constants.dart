@@ -37,10 +37,6 @@ class ApiConstants {
   static const String contactAdmin = '/contact';
   static const String contactUnreadCount = '/contact/unread-count';
 
-  // Site images
-  static const String siteImages = '/site-images';
-  static const String siteImagesAdmin = '/site-images/admin';
-
   // Voice of Trust
   static const String voiceOfTrust = '/voice-of-trust';
   static const String voiceOfTrustAdmin = '/voice-of-trust/admin/all';
