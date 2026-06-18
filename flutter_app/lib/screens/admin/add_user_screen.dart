@@ -109,10 +109,10 @@ class _AddUserScreenState extends ConsumerState<AddUserScreen> {
                       _FormField(
                         label: 'Password',
                         controller: _password,
-                        hint: 'Min. 8 characters',
+                        hint: 'Exactly 8 characters',
                         obscure: _obscurePassword,
-                        validator: Validators.password,
-                        maxLength: Validators.passwordMaxLength,
+                        validator: Validators.clientPassword,
+                        maxLength: Validators.clientPasswordLength,
                         suffix: IconButton(
                           icon: Icon(
                             _obscurePassword

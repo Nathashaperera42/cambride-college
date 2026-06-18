@@ -17,11 +17,30 @@ class Validators {
 
   static const passwordMaxLength = 64;
 
+  /// General password rule — used for login/register/reset/change-password,
+  /// where any account may already have a longer password.
   static String? password(String? v) {
     final s = v ?? '';
     if (s.length < 8) return 'Password must be at least 8 characters';
     if (s.length > passwordMaxLength) {
       return 'Password must be under $passwordMaxLength characters';
+    }
+    if (!RegExp(r'[a-zA-Z]').hasMatch(s)) {
+      return 'Password must include at least one letter';
+    }
+    if (!RegExp(r'[0-9]').hasMatch(s)) {
+      return 'Password must include at least one number';
+    }
+    return null;
+  }
+
+  static const clientPasswordLength = 8;
+
+  /// Strict rule for the admin "Add/Edit Client" forms — exactly 8 characters.
+  static String? clientPassword(String? v) {
+    final s = v ?? '';
+    if (s.length != clientPasswordLength) {
+      return 'Password must be exactly $clientPasswordLength characters';
     }
     if (!RegExp(r'[a-zA-Z]').hasMatch(s)) {
       return 'Password must include at least one letter';

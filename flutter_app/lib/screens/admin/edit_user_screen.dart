@@ -148,12 +148,12 @@ class _EditUserScreenState extends ConsumerState<EditUserScreen> {
                       ),
                       _FormField(
                         label: 'New Password',
-                        hint: 'Leave blank to keep current password',
+                        hint: 'Leave blank to keep current password (or enter exactly 8 characters)',
                         controller: _password,
                         obscure: _obscurePassword,
                         validator: (v) =>
-                            (v == null || v.isEmpty) ? null : Validators.password(v),
-                        maxLength: Validators.passwordMaxLength,
+                            (v == null || v.isEmpty) ? null : Validators.clientPassword(v),
+                        maxLength: Validators.clientPasswordLength,
                         suffix: IconButton(
                           icon: Icon(
                             _obscurePassword
