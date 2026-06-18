@@ -271,6 +271,8 @@ Future<void> _showUpsertDialog(BuildContext context, WidgetRef ref, VoiceOfTrust
                   TextFormField(
                     controller: descCtrl,
                     maxLines: 3,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
                     decoration: _inputDeco('Description *'),
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Description is required' : null,
                   ),

@@ -311,6 +311,8 @@ Future<void> _showUpsertDialog(BuildContext context, WidgetRef ref, Qualificatio
                   TextFormField(
                     controller: descCtrl,
                     maxLines: 3,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
                     decoration: _inputDeco('Description *'),
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Description is required' : null,
                   ),
@@ -318,6 +320,8 @@ Future<void> _showUpsertDialog(BuildContext context, WidgetRef ref, Qualificatio
                   TextFormField(
                     controller: featuresCtrl,
                     maxLines: 4,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
                     decoration: _inputDeco('Features (one per line)'),
                   ),
                   const SizedBox(height: 14),

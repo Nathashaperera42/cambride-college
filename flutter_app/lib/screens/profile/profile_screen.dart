@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_theme.dart';
 import '../../core/utils/validators.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/auth_provider.dart';
+import '../../routes/route_names.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -38,6 +40,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _lastName.dispose();
     _email.dispose();
     super.dispose();
+  }
+
+  // The profile screen can be reached either by pushing it (a back stack
+  // entry exists) or via the admin sidebar's `go()` navigation (no entry to
+  // pop to) — fall back to a sensible home in the latter case.
+  void _goBack() {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+      return;
+    }
+    final isAdmin = ref.read(authProvider).user?.isAdmin ?? false;
+    context.go(isAdmin ? Routes.adminDashboard : Routes.home);
   }
 
   Future<void> _save() async {
@@ -96,7 +110,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 14),
                   _passField('New Password', newPass, showNew,
                       () => setLocal(() => showNew = !showNew),
-                      validator: Validators.password),
+                      validator: Validators.password,
+                      maxLength: Validators.passwordMaxLength),
                   const SizedBox(height: 14),
                   _passField('Confirm New Password', confirmPass, showConfirm,
                       () => setLocal(() => showConfirm = !showConfirm),
@@ -152,10 +167,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _passField(String label, TextEditingController ctrl, bool show,
       VoidCallback onToggle,
-      {String? Function(String?)? validator}) {
+      {String? Function(String?)? validator, int? maxLength}) {
     return TextFormField(
       controller: ctrl,
       obscureText: !show,
+      maxLength: maxLength,
       validator: validator ??
           (v) => (v == null || v.isEmpty) ? '$label is required' : null,
       decoration: InputDecoration(
@@ -310,7 +326,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        leading: const BackButton(color: AppColors.darkNavy),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.darkNavy),
+          onPressed: _goBack,
+        ),
         title: const Text('My Profile',
             style: TextStyle(
                 color: AppColors.darkNavy,
@@ -460,16 +479,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       OutlinedButton(
-                        onPressed: () {
-                          final u = ref.read(authProvider).user;
-                          final parts =
-                              (u?.name ?? '').trim().split(' ');
-                          _firstName.text = parts.first;
-                          _lastName.text = parts.length > 1
-                              ? parts.sublist(1).join(' ')
-                              : '';
-                          _email.text = u?.email ?? '';
-                        },
+                        onPressed: _goBack,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.darkNavy,
                           side: const BorderSide(color: Color(0xFFD1D5DB)),

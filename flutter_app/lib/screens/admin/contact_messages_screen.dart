@@ -195,6 +195,8 @@ class _ContactMessagesScreenState
                   TextField(
                     controller: replyCtrl,
                     maxLines: 6,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
                     enabled: !sending,
                     decoration: InputDecoration(
                       hintText: 'Write your reply here…',

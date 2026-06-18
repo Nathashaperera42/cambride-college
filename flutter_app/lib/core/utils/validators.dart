@@ -15,9 +15,14 @@ class Validators {
     return ok ? null : 'Enter a valid email address';
   }
 
+  static const passwordMaxLength = 64;
+
   static String? password(String? v) {
     final s = v ?? '';
     if (s.length < 8) return 'Password must be at least 8 characters';
+    if (s.length > passwordMaxLength) {
+      return 'Password must be under $passwordMaxLength characters';
+    }
     if (!RegExp(r'[a-zA-Z]').hasMatch(s)) {
       return 'Password must include at least one letter';
     }

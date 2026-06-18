@@ -133,7 +133,7 @@ class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
                     _field(_descCtrl, 'Full Description *', required: true, maxLines: 4),
                     const SizedBox(height: 14),
                     Row(children: [
-                      Expanded(child: _field(_priceCtrl, 'Price (USD) *', required: true, number: true)),
+                      Expanded(child: _field(_priceCtrl, 'Price (Rs.) *', required: true, number: true)),
                       const SizedBox(width: 12),
                       Expanded(child: _dropdown('Category', _categories, _category, (v) => setState(() => _category = v!))),
                     ]),
@@ -186,7 +186,10 @@ class _AddEditCourseScreenState extends ConsumerState<AddEditCourseScreen> {
       TextFormField(
         controller: ctrl,
         maxLines: maxLines,
-        keyboardType: number ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+        keyboardType: number
+            ? const TextInputType.numberWithOptions(decimal: true)
+            : (maxLines > 1 ? TextInputType.multiline : TextInputType.text),
+        textInputAction: maxLines > 1 ? TextInputAction.newline : TextInputAction.next,
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,

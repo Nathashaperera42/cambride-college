@@ -375,6 +375,8 @@ Future<void> _showReplyDialog({
               TextField(
                 controller: replyCtrl,
                 maxLines: 3,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
                 decoration: InputDecoration(
                   labelText: 'Your reply',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),

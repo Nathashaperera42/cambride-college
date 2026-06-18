@@ -112,6 +112,7 @@ class _AddUserScreenState extends ConsumerState<AddUserScreen> {
                         hint: 'Min. 8 characters',
                         obscure: _obscurePassword,
                         validator: Validators.password,
+                        maxLength: Validators.passwordMaxLength,
                         suffix: IconButton(
                           icon: Icon(
                             _obscurePassword
@@ -235,6 +236,7 @@ class _FormField extends StatelessWidget {
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
   final Widget? suffix;
+  final int? maxLength;
 
   const _FormField({
     required this.label,
@@ -244,6 +246,7 @@ class _FormField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.validator,
     this.suffix,
+    this.maxLength,
   });
 
   @override
@@ -267,6 +270,7 @@ class _FormField extends StatelessWidget {
             obscureText: obscure,
             keyboardType: keyboardType,
             validator: validator,
+            maxLength: maxLength,
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
               hintText: hint,
