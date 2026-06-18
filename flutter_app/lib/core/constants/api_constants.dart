@@ -56,4 +56,8 @@ class ApiConstants {
   // Website Assets
   static const String websiteAssets = '/website-assets';
   static const String websiteAssetsAdmin = '/website-assets/admin';
+
+  // Course Reviews
+  static const String courseReviews = '/course-reviews';
+  static const String courseReviewsAdmin = '/course-reviews/admin';
 }

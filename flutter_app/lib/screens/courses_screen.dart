@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/constants/app_data.dart';
 import '../core/constants/app_theme.dart';
+import '../core/network/api_exception.dart';
 import '../models/course_api_model.dart';
 import '../models/models.dart';
+import '../providers/app_providers.dart';
 import '../providers/course_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/auth_provider.dart';
@@ -397,6 +399,8 @@ class _ApiCourseCard extends ConsumerWidget {
                 }),
 
                 const SizedBox(height: 20),
+                _CourseRatingRow(course: course),
+                const SizedBox(height: 16),
                 Divider(color: Colors.grey.shade200, height: 1),
                 const SizedBox(height: 16),
 
@@ -486,6 +490,161 @@ class _ApiCourseCard extends ConsumerWidget {
     }
     ref.read(cartProvider.notifier).addCourse(course);
     context.go(Routes.checkout);
+  }
+}
+
+// ── Rating summary + "Rate this course" action ───────────────────────────────
+
+class _CourseRatingRow extends ConsumerWidget {
+  final CourseApiModel course;
+  const _CourseRatingRow({required this.course});
+
+  Future<void> _rateCourse(BuildContext context, WidgetRef ref) async {
+    if (ref.read(authProvider).status != AuthStatus.authenticated) {
+      showLoginModal(context);
+      return;
+    }
+    final confirmation = await showDialog<String>(
+      context: context,
+      builder: (_) => _CourseReviewDialog(courseId: course.id),
+    );
+    if (confirmation == null || !context.mounted) return;
+    ref.read(courseProvider.notifier).loadCourses();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(confirmation),
+      backgroundColor: AppColors.royalBlue,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasReviews = course.reviewCount > 0;
+    return Row(
+      children: [
+        Row(
+          children: List.generate(5, (i) {
+            final filled = i < course.avgRating.round();
+            return Icon(filled ? Icons.star : Icons.star_border, size: 16, color: AppColors.gold);
+          }),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          hasReviews ? '${course.avgRating.toStringAsFixed(1)} (${course.reviewCount})' : 'No reviews yet',
+          style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
+        ),
+        const Spacer(),
+        TextButton(
+          onPressed: () => _rateCourse(context, ref),
+          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+          child: const Text('Rate this course', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        ),
+      ],
+    );
+  }
+}
+
+class _CourseReviewDialog extends ConsumerStatefulWidget {
+  final String courseId;
+  const _CourseReviewDialog({required this.courseId});
+
+  @override
+  ConsumerState<_CourseReviewDialog> createState() => _CourseReviewDialogState();
+}
+
+class _CourseReviewDialogState extends ConsumerState<_CourseReviewDialog> {
+  final _messageCtrl = TextEditingController();
+  int _rating = 5;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _messageCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final (_, confirmation) = await ref.read(courseReviewRepositoryProvider).create(
+            courseId: widget.courseId,
+            rating: _rating,
+            message: _messageCtrl.text.trim(),
+          );
+      if (mounted) Navigator.pop(context, confirmation);
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error = e is ApiException ? e.message : 'Something went wrong. Please try again.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(26),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Rate this Course',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.darkNavy)),
+              const SizedBox(height: 18),
+              Row(
+                children: List.generate(5, (i) {
+                  final filled = i < _rating;
+                  return IconButton(
+                    onPressed: () => setState(() => _rating = i + 1),
+                    icon: Icon(filled ? Icons.star : Icons.star_border, color: AppColors.gold, size: 28),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  );
+                }),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _messageCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Comments (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _loading ? null : () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.royalBlue),
+                    onPressed: _loading ? null : _submit,
+                    child: _loading
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Submit'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

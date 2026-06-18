@@ -143,7 +143,7 @@ class _AdminSidebar extends StatelessWidget {
           _NavItem(icon: Icons.photo_library_outlined, label: 'Site Images', route: Routes.adminSiteImages, activeRoute: activeRoute),
           _NavItem(icon: Icons.favorite_outline, label: 'Voice of Trust', route: Routes.adminVoiceOfTrust, activeRoute: activeRoute),
           _NavItem(icon: Icons.rate_review_outlined, label: 'Review Management', route: Routes.adminReviews, activeRoute: activeRoute),
-          _NavItem(icon: Icons.workspace_premium_outlined, label: 'Cambridge Qualifications', route: Routes.adminQualifications, activeRoute: activeRoute),
+          _NavItem(icon: Icons.workspace_premium_outlined, label: 'Cam. Qualifications', route: Routes.adminQualifications, activeRoute: activeRoute),
           _NavItem(icon: Icons.perm_media_outlined, label: 'Website Assets', route: Routes.adminWebsiteAssets, activeRoute: activeRoute),
           _NavItem(icon: Icons.person_outline, label: 'My Profile', route: Routes.profile, activeRoute: activeRoute),
           const Spacer(),

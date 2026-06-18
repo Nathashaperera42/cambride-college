@@ -10,6 +10,7 @@ import '../repositories/voice_of_trust_repository.dart';
 import '../repositories/review_repository.dart';
 import '../repositories/qualification_repository.dart';
 import '../repositories/website_asset_repository.dart';
+import '../repositories/course_review_repository.dart';
 
 final storageServiceProvider =
     Provider<StorageService>((ref) => StorageService());
@@ -52,4 +53,8 @@ final qualificationRepositoryProvider = Provider<QualificationRepository>((ref) 
 
 final websiteAssetRepositoryProvider = Provider<WebsiteAssetRepository>((ref) {
   return WebsiteAssetRepository(ref.read(dioClientProvider));
+});
+
+final courseReviewRepositoryProvider = Provider<CourseReviewRepository>((ref) {
+  return CourseReviewRepository(ref.read(dioClientProvider));
 });

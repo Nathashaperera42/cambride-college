@@ -2,10 +2,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_theme.dart';
+import '../../core/network/api_exception.dart';
 import '../../models/review_model.dart';
 import '../../models/voice_of_trust_model.dart';
 import '../../providers/app_providers.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/voice_of_trust_provider.dart';
+import '../../widgets/auth_modal.dart';
 import '../../widgets/common.dart';
 
 /// Public "Voices of Trust" section — admin-managed entries, each with its
@@ -99,6 +102,10 @@ class _VoiceOfTrustCardState extends ConsumerState<_VoiceOfTrustCard> {
   }
 
   Future<void> _openReviewForm() async {
+    if (ref.read(authProvider).status != AuthStatus.authenticated) {
+      showLoginModal(context);
+      return;
+    }
     final thankYou = await showDialog<String>(
       context: context,
       builder: (_) => _ReviewFormDialog(voiceOfTrustId: widget.entry.id),
@@ -218,7 +225,6 @@ class _ReviewFormDialog extends ConsumerStatefulWidget {
 }
 
 class _ReviewFormDialogState extends ConsumerState<_ReviewFormDialog> {
-  final _nameCtrl = TextEditingController();
   final _messageCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   int _rating = 5;
@@ -227,7 +233,6 @@ class _ReviewFormDialogState extends ConsumerState<_ReviewFormDialog> {
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
     _messageCtrl.dispose();
     super.dispose();
   }
@@ -241,7 +246,6 @@ class _ReviewFormDialogState extends ConsumerState<_ReviewFormDialog> {
     try {
       final (_, thankYou) = await ref.read(reviewRepositoryProvider).create(
             voiceOfTrustId: widget.voiceOfTrustId,
-            customerName: _nameCtrl.text.trim(),
             message: _messageCtrl.text.trim(),
             rating: _rating,
           );
@@ -249,7 +253,7 @@ class _ReviewFormDialogState extends ConsumerState<_ReviewFormDialog> {
     } catch (e) {
       setState(() {
         _loading = false;
-        _error = 'Something went wrong. Please try again.';
+        _error = e is ApiException ? e.message : 'Something went wrong. Please try again.';
       });
     }
   }
@@ -270,13 +274,12 @@ class _ReviewFormDialogState extends ConsumerState<_ReviewFormDialog> {
               children: [
                 const Text('Write a Review',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.darkNavy)),
-                const SizedBox(height: 18),
-                TextFormField(
-                  controller: _nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Your name *', border: OutlineInputBorder()),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+                const SizedBox(height: 6),
+                Text(
+                  'Posting as ${ref.watch(authProvider).user?.name ?? 'you'}',
+                  style: const TextStyle(fontSize: 13, color: AppColors.mutedText),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 18),
                 TextFormField(
                   controller: _messageCtrl,
                   maxLines: 3,

@@ -40,28 +40,6 @@ class ReviewNotifier extends StateNotifier<ReviewState> {
     }
   }
 
-  /// Returns the thank-you message on success, or null on failure.
-  Future<String?> submit({
-    required String voiceOfTrustId,
-    required String customerName,
-    required String message,
-    int? rating,
-  }) async {
-    try {
-      final (review, thankYou) = await _ref.read(reviewRepositoryProvider).create(
-            voiceOfTrustId: voiceOfTrustId,
-            customerName: customerName,
-            message: message,
-            rating: rating,
-          );
-      state = state.copyWith(reviews: [review, ...state.reviews]);
-      return thankYou;
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
-      return null;
-    }
-  }
-
   Future<bool> reply(String id, String adminReply) async {
     try {
       final updated = await _ref.read(reviewRepositoryProvider).reply(id, adminReply);

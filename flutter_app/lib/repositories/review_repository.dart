@@ -16,17 +16,17 @@ class ReviewRepository {
     }
   }
 
-  /// Returns the created review plus the server's thank-you message.
+  /// Submits a review as the logged-in user (the server derives the
+  /// reviewer's name from the auth token). Returns the created review plus
+  /// the server's thank-you message.
   Future<(ReviewModel, String)> create({
     required String voiceOfTrustId,
-    required String customerName,
     required String message,
     int? rating,
   }) async {
     try {
       final res = await client.dio.post(ApiConstants.reviews, data: {
         'voiceOfTrustId': voiceOfTrustId,
-        'customerName': customerName,
         'message': message,
         if (rating != null) 'rating': rating,
       });

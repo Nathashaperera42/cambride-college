@@ -28,6 +28,8 @@ class CourseApiModel {
   final bool isPublished;
   final bool isFeatured;
   final bool gold;
+  final double avgRating;
+  final int reviewCount;
   final DateTime? createdAt;
 
   const CourseApiModel({
@@ -46,6 +48,8 @@ class CourseApiModel {
     this.isPublished = true,
     this.isFeatured = false,
     this.gold = false,
+    this.avgRating = 0,
+    this.reviewCount = 0,
     this.createdAt,
   });
 
@@ -67,6 +71,8 @@ class CourseApiModel {
         isPublished: j['isPublished'] ?? true,
         isFeatured: j['isFeatured'] ?? false,
         gold: j['gold'] ?? false,
+        avgRating: (j['avgRating'] as num?)?.toDouble() ?? 0,
+        reviewCount: (j['reviewCount'] as num?)?.toInt() ?? 0,
         createdAt: j['createdAt'] != null ? DateTime.tryParse(j['createdAt'].toString()) : null,
       );
 
