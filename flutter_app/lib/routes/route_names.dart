@@ -23,6 +23,10 @@ class Routes {
   static const adminContacts = '/admin/contacts';
   static const adminNotifications = '/admin/notifications';
   static const adminSiteImages = '/admin/site-images';
+  static const adminVoiceOfTrust = '/admin/voice-of-trust';
+  static const adminReviews = '/admin/reviews';
+  static const adminQualifications = '/admin/qualifications';
+  static const adminWebsiteAssets = '/admin/website-assets';
 
   // Client portal
   static const profile = '/profile';

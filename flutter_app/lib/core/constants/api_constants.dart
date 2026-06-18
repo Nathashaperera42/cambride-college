@@ -40,4 +40,20 @@ class ApiConstants {
   // Site images
   static const String siteImages = '/site-images';
   static const String siteImagesAdmin = '/site-images/admin';
+
+  // Voice of Trust
+  static const String voiceOfTrust = '/voice-of-trust';
+  static const String voiceOfTrustAdmin = '/voice-of-trust/admin/all';
+
+  // Reviews
+  static const String reviews = '/reviews';
+  static const String reviewsAdmin = '/reviews/admin';
+
+  // Cambridge Qualifications
+  static const String qualifications = '/qualifications';
+  static const String qualificationsAdmin = '/qualifications/admin/all';
+
+  // Website Assets
+  static const String websiteAssets = '/website-assets';
+  static const String websiteAssetsAdmin = '/website-assets/admin';
 }

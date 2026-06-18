@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/constants/app_theme.dart';
+import '../providers/app_providers.dart';
 
 /// ---------------------------------------------------------------------------
 /// HERO SLIDER — card-expansion slider hero. The front-most card in the right
@@ -28,6 +30,14 @@ class HeroSlide {
     required this.titleLine2,
     required this.description,
   });
+
+  HeroSlide withImage(String overrideImage) => HeroSlide(
+        image: overrideImage,
+        category: category,
+        titleLine1: titleLine1,
+        titleLine2: titleLine2,
+        description: description,
+      );
 }
 
 /// EDIT ME — add / remove / reorder slides here.
@@ -94,7 +104,7 @@ const List<HeroSlide> kHeroSlides = [
   ),
 ];
 
-class HeroSlider extends StatefulWidget {
+class HeroSlider extends ConsumerStatefulWidget {
   /// Same navigation callback used elsewhere in the app.
   final ValueChanged<int> onNavigate;
 
@@ -109,14 +119,21 @@ class HeroSlider extends StatefulWidget {
   });
 
   @override
-  State<HeroSlider> createState() => _HeroSliderState();
+  ConsumerState<HeroSlider> createState() => _HeroSliderState();
 }
 
-class _HeroSliderState extends State<HeroSlider>
+class _HeroSliderState extends ConsumerState<HeroSlider>
     with TickerProviderStateMixin {
   int _active = 0;
   int? _incoming; // slide currently expanding into the background
   bool _reverse = false; // prev (fade) vs next (card-expand)
+
+  /// Admin-managed background images (Website Assets → Hero Images), applied
+  /// over [kHeroSlides] by position. Falls back to the hardcoded image when
+  /// there's no matching active asset, or while/if the fetch hasn't resolved.
+  List<HeroSlide> _slides = kHeroSlides;
+
+  HeroSlide _slideAt(int i) => _slides[i % _slides.length];
 
   late final AnimationController _expandCtrl; // card -> fullscreen
   late final AnimationController _textCtrl; // staggered text entrance
@@ -139,6 +156,26 @@ class _HeroSliderState extends State<HeroSlider>
         precacheImage(NetworkImage(s.image), context);
       }
     });
+    _loadHeroAssetOverrides();
+  }
+
+  Future<void> _loadHeroAssetOverrides() async {
+    try {
+      final assets = await ref.read(websiteAssetRepositoryProvider).getActive(assetType: 'hero');
+      final images = assets.map((a) => a.imageUrl).whereType<String>().toList();
+      if (images.isEmpty || !mounted) return;
+      setState(() {
+        _slides = [
+          for (var i = 0; i < kHeroSlides.length; i++)
+            i < images.length ? kHeroSlides[i].withImage(images[i]) : kHeroSlides[i],
+        ];
+      });
+      for (final url in images) {
+        if (mounted) precacheImage(NetworkImage(url), context);
+      }
+    } catch (_) {
+      // Silent enhancement — keep the hardcoded hero images on failure.
+    }
   }
 
   void _startAutoplay() {
@@ -224,8 +261,8 @@ class _HeroSliderState extends State<HeroSlider>
         final firstCardRect = Rect.fromLTWH(
             firstCardLeft, heroH - cardsBottom - cardH, cardW, cardH);
 
-        final active = kHeroSlides[_active];
-        final textDest = _busy ? kHeroSlides[_incoming!] : active;
+        final active = _slideAt(_active);
+        final textDest = _busy ? _slideAt(_incoming!) : active;
 
         return SizedBox(
           width: double.infinity,
@@ -241,7 +278,7 @@ class _HeroSliderState extends State<HeroSlider>
                     builder: (context, _) {
                       final t =
                           Curves.easeInOutCubic.transform(_expandCtrl.value);
-                      final incoming = kHeroSlides[_incoming!];
+                      final incoming = _slideAt(_incoming!);
                       if (_reverse) {
                         // prev: full-screen fade with a gentle settle-scale
                         return Opacity(
@@ -306,6 +343,7 @@ class _HeroSliderState extends State<HeroSlider>
                   bottom: cardsBottom,
                   height: cardH,
                   child: _CardRow(
+                    slides: _slides,
                     activeIndex: _active,
                     cardWidth: cardW,
                     cardHeight: cardH,
@@ -657,6 +695,7 @@ class _HeroText extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _CardRow extends StatelessWidget {
+  final List<HeroSlide> slides;
   final int activeIndex; // cards show activeIndex+1 .. activeIndex+visible
   final double cardWidth;
   final double cardHeight;
@@ -667,6 +706,7 @@ class _CardRow extends StatelessWidget {
   final VoidCallback onTapFirst;
 
   const _CardRow({
+    required this.slides,
     required this.activeIndex,
     required this.cardWidth,
     required this.cardHeight,
@@ -679,7 +719,7 @@ class _CardRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final n = kHeroSlides.length;
+    final n = slides.length;
     return AnimatedBuilder(
       animation: expandCtrl,
       builder: (context, _) {
@@ -689,7 +729,7 @@ class _CardRow extends StatelessWidget {
         final shift = (cardWidth + gap) * t; // remaining cards slide left
         final children = <Widget>[];
         for (var i = 0; i < visible + 1; i++) {
-          final dest = kHeroSlides[(activeIndex + 1 + i) % n];
+          final dest = slides[(activeIndex + 1 + i) % n];
           final isFirst = i == 0;
           children.add(
             Transform.translate(

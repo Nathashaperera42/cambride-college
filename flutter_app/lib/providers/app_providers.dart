@@ -6,6 +6,10 @@ import '../repositories/user_repository.dart';
 import '../repositories/course_repository.dart';
 import '../repositories/order_repository.dart';
 import '../repositories/site_image_repository.dart';
+import '../repositories/voice_of_trust_repository.dart';
+import '../repositories/review_repository.dart';
+import '../repositories/qualification_repository.dart';
+import '../repositories/website_asset_repository.dart';
 
 final storageServiceProvider =
     Provider<StorageService>((ref) => StorageService());
@@ -32,4 +36,20 @@ final orderRepositoryProvider = Provider<OrderRepository>((ref) {
 
 final siteImageRepositoryProvider = Provider<SiteImageRepository>((ref) {
   return SiteImageRepository(ref.read(dioClientProvider));
+});
+
+final voiceOfTrustRepositoryProvider = Provider<VoiceOfTrustRepository>((ref) {
+  return VoiceOfTrustRepository(ref.read(dioClientProvider));
+});
+
+final reviewRepositoryProvider = Provider<ReviewRepository>((ref) {
+  return ReviewRepository(ref.read(dioClientProvider));
+});
+
+final qualificationRepositoryProvider = Provider<QualificationRepository>((ref) {
+  return QualificationRepository(ref.read(dioClientProvider));
+});
+
+final websiteAssetRepositoryProvider = Provider<WebsiteAssetRepository>((ref) {
+  return WebsiteAssetRepository(ref.read(dioClientProvider));
 });

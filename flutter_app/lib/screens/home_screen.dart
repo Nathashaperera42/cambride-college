@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/constants/app_data.dart';
 import '../core/constants/app_theme.dart';
+import '../providers/qualification_provider.dart';
 import '../widgets/cards.dart';
 import '../widgets/common.dart';
 import '../widgets/hero_slider.dart'; // <-- NEW: the slider hero
+import 'home/voice_of_trust_section.dart';
 
 class HomePage extends StatelessWidget {
   final ValueChanged<int> onNavigate;
@@ -20,9 +24,9 @@ class HomePage extends StatelessWidget {
         HeroSlider(onNavigate: onNavigate, showNavBar: false),
         _AboutSection(onNavigate: onNavigate),
         _MissionVisionSection(),
-        _ProgramsSection(),
+        _ProgramsSection(onNavigate: onNavigate),
         _ExpertsSection(onNavigate: onNavigate),
-        _TestimonialsSection(),
+        VoiceOfTrustSection(onNavigate: onNavigate),
         _CtaBanner(onNavigate: onNavigate),
       ],
     );
@@ -502,9 +506,46 @@ class _StatsBar extends StatelessWidget {
   }
 }
 
-class _ProgramsSection extends StatelessWidget {
+class _ProgramsSection extends ConsumerStatefulWidget {
+  final ValueChanged<int> onNavigate;
+  const _ProgramsSection({required this.onNavigate});
+
+  @override
+  ConsumerState<_ProgramsSection> createState() => _ProgramsSectionState();
+}
+
+class _ProgramsSectionState extends ConsumerState<_ProgramsSection> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(qualificationProvider.notifier).loadActive();
+    });
+  }
+
+  Future<void> _openLink(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(qualificationProvider);
+    // Fall back to the bundled qualification list while the API call is in
+    // flight or if the admin hasn't added any qualifications yet.
+    final cards = state.qualifications.isNotEmpty
+        ? state.qualifications
+            .map((q) => QualificationCard(
+                  qualification: q,
+                  onLearnMore: q.redirectUrl != null
+                      ? () => _openLink(q.redirectUrl!)
+                      : () => widget.onNavigate(1),
+                ))
+            .toList()
+        : AppData.programs.map((c) => CourseCard(course: c)).toList();
+
     return Container(
       width: double.infinity,
       color: AppColors.lightBlueBg,
@@ -519,9 +560,7 @@ class _ProgramsSection extends StatelessWidget {
             const SizedBox(height: 40),
             ResponsiveGrid(
               columnsFor: (w) => w >= 1000 ? 4 : (w >= 640 ? 2 : 1),
-              children: AppData.programs
-                  .map((c) => CourseCard(course: c))
-                  .toList(),
+              children: cards,
             ),
           ],
         ),
@@ -629,34 +668,6 @@ class _ExpertsSection extends StatelessWidget {
                   Expanded(child: text),
                 ],
               ),
-      ),
-    );
-  }
-}
-
-class _TestimonialsSection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      color: AppColors.lightBlueBg,
-      child: ContentWrap(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 72),
-        child: Column(
-          children: [
-            const SectionTitle(
-              title: AppData.testimonialsTitle,
-              subtitle: AppData.testimonialsSubtitle,
-            ),
-            const SizedBox(height: 40),
-            ResponsiveGrid(
-              columnsFor: (w) => w >= 900 ? 3 : 1,
-              children: AppData.testimonials
-                  .map((t) => TestimonialCard(testimonial: t))
-                  .toList(),
-            ),
-          ],
-        ),
       ),
     );
   }

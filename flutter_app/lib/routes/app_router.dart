@@ -22,6 +22,10 @@ import '../screens/admin/order_list_screen.dart';
 import '../screens/admin/contact_messages_screen.dart';
 import '../screens/admin/notifications_screen.dart';
 import '../screens/admin/site_images_screen.dart';
+import '../screens/admin/voice_of_trust_screen.dart';
+import '../screens/admin/review_list_screen.dart';
+import '../screens/admin/qualification_screen.dart';
+import '../screens/admin/website_asset_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/client/my_orders_screen.dart';
 import '../screens/client/my_courses_screen.dart';
@@ -102,6 +106,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.adminContacts, builder: (_, __) => const ContactMessagesScreen()),
       GoRoute(path: Routes.adminNotifications, builder: (_, __) => const NotificationsScreen()),
       GoRoute(path: Routes.adminSiteImages, builder: (_, __) => const SiteImagesScreen()),
+      GoRoute(path: Routes.adminVoiceOfTrust, builder: (_, __) => const VoiceOfTrustScreen()),
+      GoRoute(path: Routes.adminReviews, builder: (_, __) => const ReviewListScreen()),
+      GoRoute(path: Routes.adminQualifications, builder: (_, __) => const QualificationScreen()),
+      GoRoute(path: Routes.adminWebsiteAssets, builder: (_, __) => const WebsiteAssetScreen()),
 
       // Client portal
       GoRoute(path: Routes.profile, builder: (_, __) => const ProfileScreen()),

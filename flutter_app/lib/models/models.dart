@@ -40,21 +40,6 @@ class Course {
   });
 }
 
-/// A parent/student testimonial.
-class Testimonial {
-  final String name;
-  final String role;
-  final int rating;
-  final String review;
-
-  const Testimonial({
-    required this.name,
-    required this.role,
-    required this.rating,
-    required this.review,
-  });
-}
-
 /// A statistic counter (e.g. "2500+ Students").
 class StatItem {
   final String value;

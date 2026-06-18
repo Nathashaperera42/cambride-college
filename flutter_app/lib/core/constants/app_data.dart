@@ -195,38 +195,6 @@ class AppData {
     ),
   ];
 
-  // Testimonials
-  static const String testimonialsTitle = 'Voices of Trust';
-  static const String testimonialsSubtitle =
-      'Hear what parents and professionals say about our Cambridge English '
-      'programs — trusted, globally recognized, and life-changing.';
-
-  static const List<Testimonial> testimonials = [
-    Testimonial(
-      name: 'Sarah Mitchell',
-      role: 'Parent',
-      rating: 5,
-      review:
-          'My daughter improved her English significantly. The Cambridge '
-          'certification opened doors for her university applications.',
-    ),
-    Testimonial(
-      name: 'Himandi & Sithuki\'s Parent',
-      role: 'Parent',
-      rating: 5,
-      review:
-          'Thanks to Governess College of English and Teacher Ishara, my '
-          'daughter\'s confidence and English skills have greatly improved.',
-    ),
-    Testimonial(
-      name: 'Proud Parent of Graduates',
-      role: 'Parent',
-      rating: 5,
-      review:
-          'As a proud parent of graduates, I highly recommend Governess College '
-          'of English for improving all four language skills.',
-    ),
-  ];
 
   // About page
   static const String aboutTitle = 'About Governess College of English';
